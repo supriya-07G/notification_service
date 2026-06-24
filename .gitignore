@@ -1,0 +1,10 @@
+.env
+__pycache__/
+*.pyc
+storage.sqlite
+storage.sqlite-wal
+storage.sqlite-shm
+credentials/
+venv/
+.pytest_cache/
+*.egg-info/

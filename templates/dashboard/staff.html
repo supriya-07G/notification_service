@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block title %}Staff Management - EcoSave Dashboard{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+  <div class="col-12 text-dark">
+    <h1 class="h2 text-dark font-weight-bold">Staff Management</h1>
+    <p class="text-muted">Manage dashboard access and roles for EcoSave staff.</p>
+  </div>
+</div>
+
+{% if request.query_params.get('error') %}
+  <div class="alert alert-danger d-flex align-items-center mb-4" role="alert">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+    <div>{{ request.query_params.get('error') }}</div>
+  </div>
+{% endif %}
+
+{% if request.query_params.get('success') %}
+  <div class="alert alert-success d-flex align-items-center mb-4" role="alert">
+    <i class="bi bi-check-circle-fill me-2"></i>
+    <div>Action completed successfully!</div>
+  </div>
+{% endif %}
+
+<!-- Add Staff Button -->
+<div class="mb-4">
+  <button class="btn btn-success text-white d-flex align-items-center gap-1" type="button" data-bs-toggle="collapse" data-bs-target="#addStaffCard">
+    <i class="bi bi-person-plus-fill"></i> Add New Staff Member
+  </button>
+  
+  <div class="collapse mt-3" id="addStaffCard">
+    <form action="/dashboard/staff/add" method="POST" class="card border-success">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="card-header bg-success text-white"><i class="bi bi-person-plus"></i> Create Staff Member</div>
+      <div class="card-body row g-3">
+        <div class="col-md-6">
+          <label class="form-label small font-weight-medium">Email Address</label>
+          <input type="email" name="email" class="form-control form-control-sm" required placeholder="name@ecosave-group.com">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small font-weight-medium">Full Name</label>
+          <input type="text" name="name" class="form-control form-control-sm" required>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small font-weight-medium">Phone (Optional)</label>
+          <input type="text" name="phone" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small font-weight-medium">Role</label>
+          <select name="role" class="form-select form-select-sm" required>
+            <option value="staff">Staff (View Only)</option>
+            <option value="admin">Admin (Full Access)</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small font-weight-medium">&nbsp;</label>
+          <div class="d-block">
+            <span class="text-muted small">Password must be at least 12 chars with upper, lower, number, and special char.</span>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small font-weight-medium">Password</label>
+          <div class="input-group input-group-sm">
+            <input type="password" id="staff_password" name="password" class="form-control" required>
+            <button class="btn btn-outline-secondary bg-white border-start-0" type="button" onclick="toggleVisibility('staff_password', 'toggleIconStaff1')">
+              <i class="bi bi-eye-fill text-muted" id="toggleIconStaff1"></i>
+            </button>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small font-weight-medium">Confirm Password</label>
+          <div class="input-group input-group-sm">
+            <input type="password" id="staff_password_confirm" name="password_confirm" class="form-control" required>
+            <button class="btn btn-outline-secondary bg-white border-start-0" type="button" onclick="toggleVisibility('staff_password_confirm', 'toggleIconStaff2')">
+              <i class="bi bi-eye-fill text-muted" id="toggleIconStaff2"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="card-footer bg-light d-flex justify-content-end">
+        <button type="submit" class="btn btn-sm btn-primary">Create Staff Member</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Staff List -->
+<div class="card shadow-sm border-success rounded-3">
+  <div class="card-header"><i class="bi bi-people-fill me-1"></i> Current Staff</div>
+  <div class="card-body p-0">
+    {% if staff_members %}
+      <div class="table-responsive">
+        <table class="table table-striped table-hover table-sm align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Last Login</th>
+              <th class="text-end pe-3">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for member in staff_members %}
+              <tr>
+                <td class="font-weight-medium text-dark">{{ member.name or 'N/A' }}</td>
+                <td>{{ member.email }}</td>
+                <td>
+                  {% if member.role == 'admin' %}
+                    <span class="badge bg-primary">Admin</span>
+                  {% else %}
+                    <span class="badge bg-secondary">Staff</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if member.is_active %}
+                    <span class="badge bg-success">Active</span>
+                  {% else %}
+                    <span class="badge bg-danger">Inactive</span>
+                  {% endif %}
+                </td>
+                <td class="small">{{ member.last_login_at or 'Never' }}</td>
+                <td class="text-end pe-3">
+                  {% if member.email != user.get('email') %}
+                  <form action="/dashboard/staff/{{ member.id }}/toggle" method="POST" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    {% if member.is_active %}
+                      <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure you want to deactivate {{ member.email }}?')">
+                        Deactivate
+                      </button>
+                    {% else %}
+                      <button type="submit" class="btn btn-sm btn-outline-success">
+                        Activate
+                      </button>
+                    {% endif %}
+                  </form>
+                  {% else %}
+                    <span class="text-muted small text-end fst-italic">You</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="text-center py-5 text-muted">
+        <p>No staff members found.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+  function toggleVisibility(inputId, iconId) {
+    const input = document.getElementById(inputId);
+    const icon = document.getElementById(iconId);
+    if (input.type === 'password') {
+      input.type = 'text';
+      icon.classList.remove('bi-eye-fill');
+      icon.classList.add('bi-eye-slash-fill');
+    } else {
+      input.type = 'password';
+      icon.classList.remove('bi-eye-slash-fill');
+      icon.classList.add('bi-eye-fill');
+    }
+  }
+</script>
+{% endblock %}

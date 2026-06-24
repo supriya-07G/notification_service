@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}Overview - EcoSave Dashboard{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+  <div class="col-12 d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div>
+      <h1 class="h2 text-dark font-weight-bold mb-0">System Overview</h1>
+      <p class="text-muted mb-0">Real-time status and metrics for appointment notifications.</p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <!-- Status: Kill Switch -->
+      {% if is_paused %}
+        <span class="badge bg-danger fs-6 px-3 py-2"><i class="bi bi-pause-circle-fill me-1"></i> Notifications Paused</span>
+      {% else %}
+        <span class="badge bg-success fs-6 px-3 py-2"><i class="bi bi-play-circle-fill me-1"></i> Notifications Active</span>
+      {% endif %}
+
+      <!-- Status: Quiet Hours -->
+      {% if is_quiet_hours_active %}
+        <span class="badge bg-warning text-dark fs-6 px-3 py-2"><i class="bi bi-moon-fill me-1"></i> Quiet Hours Active</span>
+      {% else %}
+        <span class="badge bg-success fs-6 px-3 py-2"><i class="bi bi-sun-fill me-1"></i> Allowed Send Window</span>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="card h-100 border-start border-primary border-4 shadow-sm rounded-3">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h6 class="text-uppercase text-muted small">Sent (Today)</h6>
+            <h3 class="display-6 font-weight-bold text-dark">{{ stats.sent }}</h3>
+          </div>
+          <div class="fs-1 text-success opacity-75">
+            <i class="bi bi-send-fill"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card h-100 border-start border-success border-4 shadow-sm rounded-3">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h6 class="text-uppercase text-muted small">Delivered (Today)</h6>
+            <h3 class="display-6 font-weight-bold text-success">{{ stats.delivered }}</h3>
+          </div>
+          <div class="fs-1 text-success opacity-75">
+            <i class="bi bi-check-circle-fill"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card h-100 border-start border-danger border-4 shadow-sm rounded-3">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h6 class="text-uppercase text-muted small">Failed (Today)</h6>
+            <h3 class="display-6 font-weight-bold text-danger">{{ stats.failed }}</h3>
+          </div>
+          <div class="fs-1 text-danger opacity-75">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card h-100 border-start border-warning border-4 shadow-sm rounded-3">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h6 class="text-uppercase text-muted small">Pending (Today)</h6>
+            <h3 class="display-6 font-weight-bold text-warning">{{ stats.pending }}</h3>
+          </div>
+          <div class="fs-1 text-warning opacity-75">
+            <i class="bi bi-hourglass-split"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Failures and Shortcuts -->
+<div class="row g-4">
+  <!-- 5 Most Recent Failures -->
+  <div class="col-lg-8">
+    <div class="card h-100 shadow-sm border-success rounded-3">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-exclamation-octagon-fill text-danger me-1"></i> Recent Failures Needing Attention</span>
+        <a href="/dashboard/deliveries?status=failed" class="btn btn-sm btn-outline-primary py-0 px-2 small">View All</a>
+      </div>
+      <div class="card-body p-0">
+        {% if recent_failures %}
+          <div class="table-responsive">
+            <table class="table table-striped table-hover table-sm align-middle mb-0">
+              <thead>
+                <tr>
+                  <th style="width: 20%;">Customer</th>
+                  <th style="width: 15%;">Channel</th>
+                  <th style="width: 15%;">Rule</th>
+                  <th style="width: 20%;">Sent At</th>
+                  <th style="width: 15%;">Error Code</th>
+                  <th style="width: 15%;">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for fail in recent_failures %}
+                  <tr class="row-failed">
+                    <td>
+                      <div class="font-weight-medium text-dark">{{ fail.customer_name }}</div>
+                      <div class="small text-muted">{{ fail.to_address }}</div>
+                    </td>
+                    <td>
+                      {% if fail.channel == 'sms' %}
+                        <span class="badge bg-secondary"><i class="bi bi-chat-left-fill me-1"></i> SMS</span>
+                      {% else %}
+                        <span class="badge bg-info text-dark"><i class="bi bi-envelope-fill me-1"></i> Email</span>
+                      {% endif %}
+                    </td>
+                    <td><code class="small text-dark">{{ fail.rule_name }}</code></td>
+                    <td class="small">{{ fail.sent_at }}</td>
+                    <td>
+                      <span class="badge bg-danger">{{ fail.error_code or 'Unknown' }}</span>
+                    </td>
+                    <td>
+                      <a href="/dashboard/appointments?search={{ fail.customer_name }}" class="btn btn-sm btn-primary py-0 px-2 small">
+                        <i class="bi bi-search"></i> Appt
+                      </a>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <div class="text-center py-5 text-muted">
+            <i class="bi bi-check-circle text-success display-4 mb-3 d-block"></i>
+            No recent failures detected! All systems operating smoothly.
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Operational Shortcuts & Quick Links -->
+  <div class="col-lg-4">
+    <div class="card h-100 shadow-sm border-success rounded-3">
+      <div class="card-header">
+        <i class="bi bi-lightning-charge-fill text-warning me-1"></i> Quick Actions
+      </div>
+      <div class="card-body">
+        <div class="d-grid gap-3">
+          <a href="/dashboard/appointments" class="btn btn-success text-white d-flex align-items-center justify-content-between p-3">
+            <div class="text-start">
+              <div class="font-weight-bold">Manage Appointments</div>
+              <div class="small opacity-75">View & override next 72 hours</div>
+            </div>
+            <i class="bi bi-arrow-right-circle fs-3"></i>
+          </a>
+          
+          <a href="/dashboard/quarantine" class="btn btn-outline-primary d-flex align-items-center justify-content-between p-3 border-2">
+            <div class="text-start">
+              <div class="font-weight-bold">Resolve Quarantine</div>
+              <div class="small">Fix issues for {{ quarantine_count or 0 }} bad events</div>
+            </div>
+            <i class="bi bi-shield-exclamation fs-3"></i>
+          </a>
+          
+          <a href="/dashboard/settings" class="btn btn-outline-secondary d-flex align-items-center justify-content-between p-3 border-2 text-dark">
+            <div class="text-start">
+              <div class="font-weight-bold">System Settings</div>
+              <div class="small text-muted">Update quiet hours & toggles</div>
+            </div>
+            <i class="bi bi-sliders fs-3"></i>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

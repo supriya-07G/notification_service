@@ -1,0 +1,17 @@
+[Unit]
+Description=Notification Service Webhook Server
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/notification_service
+EnvironmentFile=/opt/notification_service/.env
+ExecStart=/opt/notification_service/venv/bin/uvicorn webhook_server:app \
+          --host 127.0.0.1 --port 8096 --workers 1 --log-level info
+Restart=always
+RestartSec=5
+SyslogIdentifier=notification-webhooks
+
+[Install]
+WantedBy=multi-user.target

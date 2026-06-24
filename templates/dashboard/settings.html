@@ -1,0 +1,318 @@
+{% extends "base.html" %}
+
+{% block title %}System Settings - EcoSave Dashboard{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+  <div class="col-12 text-dark">
+    <h1 class="h2 text-dark font-weight-bold">System Settings</h1>
+    <p class="text-muted">Configure notification channels, quiet hours, and active rules.</p>
+  </div>
+</div>
+
+{% if saved %}
+  <div class="alert alert-success d-flex align-items-center mb-4 border-success" role="alert">
+    <i class="bi bi-check-circle-fill me-2 text-success"></i>
+    <div>System settings updated successfully!</div>
+  </div>
+{% endif %}
+
+<div class="row">
+  <div class="col-lg-8 offset-lg-2">
+    <form action="/dashboard/settings" method="POST" class="card shadow-sm border-success rounded-3">
+      <div class="card-header"><i class="bi bi-sliders me-1"></i> Edit Settings</div>
+      <div class="card-body">
+        
+        <!-- Global Controls -->
+        <h5 class="text-success font-weight-bold mb-3 border-bottom pb-2">Global Controls</h5>
+        
+        <div class="mb-4">
+          <!-- Kill Switch -->
+          <div class="form-check form-switch mb-3">
+            <input class="form-check-input" type="checkbox" id="notifications_paused" name="notifications_paused" value="true"
+                   {% if settings.notifications_paused == 'true' %}checked{% endif %}>
+            <label class="form-check-label font-weight-medium text-dark" for="notifications_paused">
+              Pause All Notifications (Kill Switch)
+            </label>
+            <div class="form-text text-danger">Check this to temporarily pause all outbound SMS and email messages immediately.</div>
+          </div>
+        </div>
+
+        <!-- Notification Channels -->
+        <h5 class="text-success font-weight-bold mb-3 border-bottom pb-2">Notification Channels</h5>
+        
+        <div class="row g-3 mb-4">
+          <div class="col-md-6">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="sms_enabled" name="sms_enabled" value="true"
+                     {% if settings.sms_enabled == 'true' %}checked{% endif %}>
+              <label class="form-check-label font-weight-medium text-dark" for="sms_enabled">
+                SMS Channel Enabled
+              </label>
+              <div class="form-text">Allow sending text messages.</div>
+            </div>
+          </div>
+          
+          <div class="col-md-6">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="email_enabled" name="email_enabled" value="true"
+                     {% if settings.email_enabled == 'true' %}checked{% endif %}>
+              <label class="form-check-label font-weight-medium text-dark" for="email_enabled">
+                Email Channel Enabled
+              </label>
+              <div class="form-text">Allow sending emails.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quiet Hours Settings -->
+        <h5 class="text-success font-weight-bold mb-3 border-bottom pb-2">Quiet Hours</h5>
+        
+        <div class="row g-3 mb-4">
+          <div class="col-md-4">
+            <label for="quiet_hours_start" class="form-label small font-weight-medium">Start Time</label>
+            <input type="time" class="form-control form-control-sm" id="quiet_hours_start" name="quiet_hours_start" 
+                   value="{{ settings.quiet_hours_start }}" required>
+          </div>
+          <div class="col-md-4">
+            <label for="quiet_hours_end" class="form-label small font-weight-medium">End Time</label>
+            <input type="time" class="form-control form-control-sm" id="quiet_hours_end" name="quiet_hours_end" 
+                   value="{{ settings.quiet_hours_end }}" required>
+          </div>
+          <div class="col-md-4">
+            <div class="form-check form-switch mt-4">
+              <input class="form-check-input" type="checkbox" id="quiet_hours_enabled" name="quiet_hours_enabled" value="true"
+                     {% if settings.quiet_hours_enabled == 'true' %}checked{% endif %}>
+              <label class="form-check-label font-weight-medium text-dark" for="quiet_hours_enabled">
+                Enable Quiet Hours
+              </label>
+            </div>
+          </div>
+          <div class="col-12">
+            <div class="form-text">During quiet hours, scheduled notifications are queued and deferred until the active window opens.</div>
+          </div>
+        </div>
+
+        <!-- Active Rules -->
+        <h5 class="text-success font-weight-bold mb-3 border-bottom pb-2">Reminder Rules</h5>
+        
+        <div class="row g-3 mb-4">
+          <div class="col-md-4">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="reminder_72h_enabled" name="reminder_72h_enabled" value="true"
+                     {% if settings.reminder_72h_enabled == 'true' %}checked{% endif %}>
+              <label class="form-check-label font-weight-medium text-dark" for="reminder_72h_enabled">
+                72h Reminder (3 Days)
+              </label>
+            </div>
+          </div>
+          
+          <div class="col-md-4">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="reminder_24h_enabled" name="reminder_24h_enabled" value="true"
+                     {% if settings.reminder_24h_enabled == 'true' %}checked{% endif %}>
+              <label class="form-check-label font-weight-medium text-dark" for="reminder_24h_enabled">
+                24h Reminder (1 Day)
+              </label>
+            </div>
+          </div>
+          
+          <div class="col-md-4">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="reminder_2h_enabled" name="reminder_2h_enabled" value="true"
+                     {% if settings.reminder_2h_enabled == 'true' %}checked{% endif %}>
+              <label class="form-check-label font-weight-medium text-dark" for="reminder_2h_enabled">
+                2h Reminder (2 Hours)
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Localization / Timezone -->
+        <h5 class="text-success font-weight-bold mb-3 border-bottom pb-2">Localization</h5>
+        
+        <div class="mb-4">
+          <label for="timezone" class="form-label small font-weight-medium">Timezone</label>
+          <select class="form-select form-select-sm" id="timezone" name="timezone" required>
+            <option value="America/New_York" {% if settings.timezone == 'America/New_York' %}selected{% endif %}>Eastern Time (ET) — EST (UTC−5) / EDT (UTC−4) → Massachusetts & New Hampshire locations</option>
+            <option value="America/Sao_Paulo" {% if settings.timezone == 'America/Sao_Paulo' %}selected{% endif %}>Brasília Time (BRT) — UTC−3 → Most of Brazil</option>
+            <option value="America/Manaus" {% if settings.timezone == 'America/Manaus' %}selected{% endif %}>Amazon Time (AMT) — UTC−4 → Parts of western Brazil</option>
+            <option value="America/Rio_Branco" {% if settings.timezone == 'America/Rio_Branco' %}selected{% endif %}>Acre Time (ACT) — UTC−5 → Acre state in Brazil</option>
+            <option value="WET" {% if settings.timezone == 'WET' %}selected{% endif %}>Western European Time (WET) — UTC+0 → Portugal (winter)</option>
+            <option value="Europe/Lisbon" {% if settings.timezone == 'Europe/Lisbon' %}selected{% endif %}>Western European Summer Time (WEST) — UTC+1 → Portugal (summer, currently)</option>
+          </select>
+          <div class="form-text">Used to compute quiet hours local time bounds.</div>
+        </div>
+
+      </div>
+      
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <!-- Footer actions -->
+      <div class="card-footer d-flex justify-content-end gap-2 bg-light">
+        <a href="/dashboard/settings" class="btn btn-sm btn-outline-secondary">Reset Changes</a>
+        <button type="submit" class="btn btn-sm btn-primary text-white">Save Configuration</button>
+      </div>
+    </form>    <!-- Staff Alert System -->
+    <div class="card mt-4 border-info">
+      <div class="card-header bg-info text-white font-weight-bold">
+        <i class="bi bi-megaphone-fill me-1"></i> Staff Alert System
+      </div>
+      <div class="card-body">
+        <p class="text-muted small mb-4">Configure how staff receive alerts when customers reply.</p>
+        
+        <form id="alertSettingsForm">
+          <!-- Kill Switches -->
+          <h6 class="text-info font-weight-bold mb-3"><i class="bi bi-power text-danger me-1"></i> Kill Switches</h6>
+          <div class="row mb-4">
+            <div class="col-md-6">
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="alert_sms_enabled" name="alert_sms_enabled">
+                <label class="form-check-label font-weight-medium" for="alert_sms_enabled">SMS Alerts Enabled</label>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="alert_email_enabled" name="alert_email_enabled">
+                <label class="form-check-label font-weight-medium" for="alert_email_enabled">Email Alerts Enabled</label>
+              </div>
+            </div>
+          </div>
+          
+          <hr class="mb-4">
+
+          <!-- SMS Config -->
+          <h6 class="text-info font-weight-bold mb-3"><i class="bi bi-phone-fill me-1"></i> SMS Configuration</h6>
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <label for="alert_sms_from" class="form-label small font-weight-medium">From Number</label>
+              <input type="text" class="form-control form-control-sm" id="alert_sms_from" name="alert_sms_from" placeholder="+15551234567">
+            </div>
+            <div class="col-md-6">
+              <label for="alert_sms_to" class="form-label small font-weight-medium">To Numbers (Comma-separated)</label>
+              <input type="text" class="form-control form-control-sm" id="alert_sms_to" name="alert_sms_to" placeholder="+15551234567, +15557654321">
+            </div>
+            <div class="col-md-12">
+              <div class="form-check mt-2">
+                <input class="form-check-input" type="checkbox" id="alert_sms_use_staff" name="alert_sms_use_staff">
+                <label class="form-check-label small" for="alert_sms_use_staff">
+                  Also send to all active staff (Must have a valid phone number stored)
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <hr class="mb-4">
+
+          <!-- Email Config -->
+          <h6 class="text-info font-weight-bold mb-3"><i class="bi bi-envelope-fill me-1"></i> Email Configuration</h6>
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <label for="alert_email_from" class="form-label small font-weight-medium">From Email</label>
+              <input type="email" class="form-control form-control-sm" id="alert_email_from" name="alert_email_from" placeholder="notifications@ecosave.com">
+            </div>
+            <div class="col-md-6">
+              <label for="alert_email_to" class="form-label small font-weight-medium">To Emails (Comma-separated)</label>
+              <input type="text" class="form-control form-control-sm" id="alert_email_to" name="alert_email_to" placeholder="dispatch@ecosave.com, manager@ecosave.com">
+            </div>
+          </div>
+
+          <div id="alertErrors" class="alert alert-danger d-none py-2 small mb-3"></div>
+          <div id="alertSuccess" class="alert alert-success d-none py-2 small mb-3"><i class="bi bi-check-circle-fill me-1"></i> Alert settings saved successfully.</div>
+          
+          <div class="d-flex justify-content-end">
+            <button type="button" class="btn btn-sm btn-info text-white" id="btnSaveAlerts">Save Alert Settings</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Account Actions -->
+    <div class="card mt-4 border-danger">
+      <div class="card-header bg-white text-danger font-weight-bold border-danger">
+        <i class="bi bi-person-x me-1"></i> Account Actions
+      </div>
+      <div class="card-body d-flex justify-content-between align-items-center">
+        <div>
+          <h6 class="mb-1 font-weight-bold text-dark">Sign Out</h6>
+          <p class="text-muted small mb-0">Securely end your current session and return to the login screen.</p>
+        </div>
+        <a href="/dashboard/logout" class="btn btn-danger font-weight-bold">
+          <i class="bi bi-box-arrow-right me-1"></i> Sign Out
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  const form = document.getElementById("alertSettingsForm");
+  if (!form) return;
+
+  const btnSave = document.getElementById("btnSaveAlerts");
+  const errDiv = document.getElementById("alertErrors");
+  const successDiv = document.getElementById("alertSuccess");
+
+  // Fetch initial settings
+  fetch("/dashboard/api/settings/alerts")
+    .then(res => res.json())
+    .then(data => {
+      if (data.error) return;
+      document.getElementById("alert_sms_enabled").checked = data.alert_sms_enabled;
+      document.getElementById("alert_email_enabled").checked = data.alert_email_enabled;
+      document.getElementById("alert_sms_from").value = data.alert_sms_from || "";
+      document.getElementById("alert_sms_to").value = data.alert_sms_to || "";
+      document.getElementById("alert_sms_use_staff").checked = data.alert_sms_use_staff;
+      document.getElementById("alert_email_from").value = data.alert_email_from || "";
+      document.getElementById("alert_email_to").value = data.alert_email_to || "";
+    });
+
+  // Save settings
+  btnSave.addEventListener("click", function() {
+    errDiv.classList.add("d-none");
+    errDiv.innerHTML = "";
+    successDiv.classList.add("d-none");
+
+    const payload = {
+      alert_sms_enabled: document.getElementById("alert_sms_enabled").checked,
+      alert_email_enabled: document.getElementById("alert_email_enabled").checked,
+      alert_sms_from: document.getElementById("alert_sms_from").value,
+      alert_sms_to: document.getElementById("alert_sms_to").value,
+      alert_sms_use_staff: document.getElementById("alert_sms_use_staff").checked,
+      alert_email_from: document.getElementById("alert_email_from").value,
+      alert_email_to: document.getElementById("alert_email_to").value
+    };
+
+    const originalText = btnSave.innerHTML;
+    btnSave.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
+    btnSave.disabled = true;
+
+    fetch("/dashboard/api/settings/alerts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        successDiv.classList.remove("d-none");
+        setTimeout(() => successDiv.classList.add("d-none"), 3000);
+      } else if (data.errors) {
+        errDiv.innerHTML = "<ul class='mb-0'>" + data.errors.map(e => `<li>${e}</li>`).join("") + "</ul>";
+        errDiv.classList.remove("d-none");
+      } else if (data.error) {
+        errDiv.innerHTML = data.error;
+        errDiv.classList.remove("d-none");
+      }
+    })
+    .catch(err => {
+      errDiv.innerHTML = "An unexpected error occurred.";
+      errDiv.classList.remove("d-none");
+    })
+    .finally(() => {
+      btnSave.innerHTML = originalText;
+      btnSave.disabled = false;
+    });
+  });
+});
+</script>
+{% endblock %}

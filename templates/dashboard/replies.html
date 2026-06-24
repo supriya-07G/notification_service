@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Inbound Replies - EcoSave Dashboard{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+  <div class="col-12 text-dark">
+    <h1 class="h2 text-dark font-weight-bold">Inbound Replies</h1>
+    <p class="text-muted">SMS replies received from customers.</p>
+  </div>
+</div>
+
+<!-- Replies Table -->
+<div class="card shadow-sm border-success rounded-3">
+  <div class="card-header"><i class="bi bi-chat-left-dots-fill text-success me-1"></i> Customer Replies</div>
+  <div class="card-body p-0">
+    {% if replies %}
+      <div class="table-responsive">
+        <table class="table table-striped table-hover table-sm align-middle mb-0">
+          <thead>
+            <tr>
+              <th style="width: 5%;">Status</th>
+              <th style="width: 15%;">From</th>
+              <th style="width: 10%;">Channel</th>
+              <th style="width: 40%;">Message Body</th>
+              <th style="width: 15%;">Received</th>
+              <th style="width: 15%;">Classification</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for reply in replies %}
+              <tr class="{% if not reply.processed %}table-warning{% endif %}">
+                <!-- Status icon / processed -->
+                <td>
+                  {% if reply.processed %}
+                    <span class="text-success fs-5" title="Processed"><i class="bi bi-check-circle-fill"></i></span>
+                  {% else %}
+                    <span class="text-warning fs-5" title="Unprocessed (Action Needed)"><i class="bi bi-exclamation-circle-fill"></i></span>
+                  {% endif %}
+                </td>
+                
+                <!-- From Number -->
+                <td class="font-weight-medium text-dark">{{ reply.from_address }}</td>
+                
+                <!-- Channel -->
+                <td>
+                  <span class="badge bg-secondary text-uppercase">{{ reply.channel }}</span>
+                </td>
+                
+                <!-- Message Body -->
+                <td>
+                  <div class="text-dark font-weight-medium">{{ reply.body or '(Empty Message)' }}</div>
+                  
+                  {% if reply.escalated %}
+                    <div class="mt-1">
+                      <span class="badge bg-danger small"><i class="bi bi-megaphone-fill me-1"></i> Escalated to {{ reply.escalated_to or 'Discord' }}</span>
+                    </div>
+                  {% endif %}
+                </td>
+                
+                <!-- Received At -->
+                <td class="small">{{ reply.received_at }}</td>
+                
+                <!-- Classification -->
+                <td>
+                  {% if reply.classification %}
+                    <span class="badge 
+                      {% if reply.classification == 'confirm' %}bg-success
+                      {% elif reply.classification == 'stop' %}bg-danger
+                      {% elif reply.classification == 'reschedule_request' %}bg-info text-dark
+                      {% else %}bg-light text-dark{% endif %} text-uppercase">
+                      {{ reply.classification }}
+                    </span>
+                  {% else %}
+                    <span class="text-muted small">None</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="text-center py-5 text-muted">
+        <i class="bi bi-chat-left-x display-4 mb-3 d-block"></i>
+        No customer replies recorded.
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

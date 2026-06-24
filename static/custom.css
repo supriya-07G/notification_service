@@ -1,0 +1,57 @@
+/* custom.css - EcoSave Dashboard Styles */
+
+.template-editor-wrapper {
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  padding: 20px;
+}
+
+.editor-info {
+  margin-bottom: 15px;
+}
+
+.placeholder-buttons button {
+  margin-right: 5px;
+  margin-bottom: 5px;
+}
+
+.preview-container {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  padding: 15px;
+  height: 100%;
+}
+
+.preview-content {
+  background: white;
+  border: 1px solid #e9ecef;
+  border-radius: 12px;
+  padding: 15px;
+  min-height: 200px;
+  white-space: pre-wrap;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  color: #333;
+}
+
+/* Make Quill look cleaner */
+.ql-toolbar.ql-snow {
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  background: #f8f9fa;
+  border-color: #dee2e6;
+}
+
+.ql-container.ql-snow {
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  border-color: #dee2e6;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+#char-counter {
+  font-weight: 500;
+}

@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}Quarantine - EcoSave Dashboard{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+  <div class="col-12">
+    <h1 class="h2 text-dark font-weight-bold">Quarantined Calendar Events</h1>
+    <p class="text-muted">These events had missing or invalid contact information and were blocked from sending notifications. Correct the details below to resolve them.</p>
+  </div>
+</div>
+
+{% if global_error %}
+  <div class="alert alert-danger d-flex align-items-center mb-4" role="alert">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+    <div>{{ global_error }}</div>
+  </div>
+{% endif %}
+
+<!-- Filters Card -->
+<div class="card mb-4 shadow-sm border-success rounded-3">
+  <div class="card-header"><i class="bi bi-funnel-fill me-1"></i> Filter Quarantine</div>
+  <div class="card-body">
+    <form method="GET" action="/dashboard/quarantine" class="row g-3 align-items-end">
+      <!-- Search -->
+      <div class="col-md-5">
+        <label for="search" class="form-label small font-weight-medium">Search Quarantine</label>
+        <input type="text" class="form-control form-control-sm" id="search" name="search" value="{{ form_values.search or '' }}" placeholder="Search by title, description or reason...">
+      </div>
+      <!-- From Date -->
+      <div class="col-md-2">
+        <label for="start_date" class="form-label small font-weight-medium">From Date</label>
+        <input type="date" class="form-control form-control-sm" id="start_date" name="start_date" value="{{ form_values.start_date or '' }}">
+      </div>
+      <!-- To Date -->
+      <div class="col-md-2">
+        <label for="end_date" class="form-label small font-weight-medium">To Date</label>
+        <input type="date" class="form-control form-control-sm" id="end_date" name="end_date" value="{{ form_values.end_date or '' }}">
+      </div>
+      <!-- Show Past Toggle -->
+      <div class="col-md-auto d-flex align-items-center mb-1 me-2">
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" id="show_past" name="show_past" value="1" {% if form_values.show_past %}checked{% endif %}>
+          <label class="form-check-label small" for="show_past">Show Past</label>
+        </div>
+      </div>
+      <div class="col-md-auto">
+        <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-search me-1"></i> Search</button>
+        <a href="/dashboard/quarantine" class="btn btn-sm btn-outline-secondary"><i class="bi bi-x-circle me-1"></i> Clear</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Quarantine Table -->
+<div class="card shadow-sm border-success rounded-3">
+  <div class="card-header"><i class="bi bi-shield-slash-fill text-danger me-1"></i> Quarantine Queue ({{ quarantine_items | length }} items)</div>
+  <div class="card-body p-0">
+    {% if quarantine_items %}
+      <div class="table-responsive">
+        <table class="table table-striped table-hover table-sm align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Detected</th>
+              <th>Reason</th>
+              <th>Source</th>
+              <th>Title / Description</th>
+              <th>Scheduled At</th>
+              <th style="width: 25%;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in quarantine_items %}
+              {% set show_error = (error_quarantine_id == item.id) %}
+              <tr>
+                <!-- Detected time -->
+                <td class="small">{{ item.detected_at }}</td>
+                
+                <!-- Reason badge -->
+                <td>
+                  <span class="badge bg-danger">{{ item.quarantine_reason | replace('_', ' ') | capitalize }}</span>
+                </td>
+                
+                <!-- Calendar Source -->
+                <td><span class="badge bg-light text-dark text-uppercase">{{ item.calendar_source }}</span></td>
+                
+                <!-- Raw Title and Description -->
+                <td>
+                  <div class="font-weight-medium text-dark">{{ item.raw_title or '(No Title)' }}</div>
+                  {% if item.raw_description %}
+                    <div class="text-muted small text-truncate" style="max-width: 300px;" title="{{ item.raw_description }}">
+                      {{ item.raw_description }}
+                    </div>
+                  {% endif %}
+                  <div class="small text-muted font-monospace" style="font-size: 0.75rem;">Event ID: {{ item.gcal_event_id }}</div>
+                </td>
+                
+                <!-- Appointment time -->
+                <td class="small">{{ item.appointment_at }}</td>
+                
+                <!-- Actions -->
+                <td>
+                  <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-primary d-flex align-items-center gap-1" type="button" data-bs-toggle="collapse" data-bs-target="#resolveForm-{{ item.id }}" aria-expanded="{{ 'true' if show_error else 'false' }}">
+                      <i class="bi bi-pencil-square"></i> Edit & Resolve
+                    </button>
+                    
+                    <form action="/dashboard/quarantine/{{ item.id }}/dismiss" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to dismiss this event? It will not be synced.');">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                      <button type="submit" class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1">
+                        <i class="bi bi-trash"></i> Dismiss
+                      </button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+              
+              <!-- Expandable Resolve Form -->
+              <tr class="collapse {% if show_error %}show{% endif %}" id="resolveForm-{{ item.id }}">
+                <td colspan="6" class="bg-light p-3 border-bottom border-light-green">
+                  <div class="card card-body border-success">
+                    <h6 class="card-title text-success font-weight-bold mb-3"><i class="bi bi-patch-check-fill"></i> Resolve Calendar Event</h6>
+                    
+                    {% if show_error and error_message %}
+                      <div class="alert alert-danger p-2 small mb-3">
+                        <i class="bi bi-exclamation-circle me-1"></i> {{ error_message }}
+                      </div>
+                    {% endif %}
+                    
+                    <form action="/dashboard/quarantine/{{ item.id }}/resolve" method="POST" class="row g-3">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                      <!-- Corrected Name -->
+                      <div class="col-md-6">
+                        <label class="form-label small font-weight-medium">Customer Name</label>
+                        <input type="text" name="customer_name" class="form-control form-control-sm" required 
+                               value="{% if show_error %}{{ form_values.customer_name }}{% else %}{{ item.raw_title.split(',')[0].strip() if item.raw_title else '' }}{% endif %}">
+                        <div class="form-text small">Parsed name from calendar summary.</div>
+                      </div>
+                      
+                      <!-- Corrected Phone -->
+                      <div class="col-md-6">
+                        <label class="form-label small font-weight-medium">Customer Phone Number</label>
+                        <input type="text" name="phone" class="form-control form-control-sm" required placeholder="+1234567890"
+                               value="{% if show_error %}{{ form_values.phone }}{% else %}{% endif %}">
+                        <div class="form-text small">Must be a valid US mobile number for SMS delivery.</div>
+                      </div>
+                      
+                      <div class="col-12 d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#resolveForm-{{ item.id }}">Cancel</button>
+                        <button type="submit" class="btn btn-sm btn-success text-white">Save & Sync Appointment</button>
+                      </div>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="text-center py-5 text-muted">
+        <i class="bi bi-shield-check text-success display-4 mb-3 d-block"></i>
+        Quarantine is empty! No events need manual intervention.
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

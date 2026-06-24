@@ -1,0 +1,18 @@
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# */15 * * * *  www-data  cd /opt/notification_service && \
+#   /opt/notification_service/venv/bin/python calendar_sync.py \
+#   >> /var/log/notification_service/cal_sync.log 2>&1
+
+*/30 * * * *  www-data  cd /opt/notification_service && \
+  /opt/notification_service/venv/bin/python notification_engine.py \
+  >> /var/log/notification_service/engine.log 2>&1
+
+*/5  * * * *  www-data  cd /opt/notification_service && \
+  /opt/notification_service/venv/bin/python workers/reply_processor.py \
+  >> /var/log/notification_service/replies.log 2>&1
+
+5,35 * * * *  www-data  cd /opt/notification_service && \
+  /opt/notification_service/venv/bin/python channels/sendgrid_email.py \
+  >> /var/log/notification_service/email.log 2>&1

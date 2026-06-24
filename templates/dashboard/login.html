@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign In - EcoSave Dashboard</title>
+  <meta name="description" content="Sign in to the EcoSave Notification Dashboard">
+  <!-- Google Fonts: Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Bootstrap 5 CSS CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  
+  <style>
+    :root {
+      --primary-green: #2e7d32;
+      --secondary-green: #388e3c;
+      --light-green: #4caf50;
+      --very-light-green: #f1f8e9;
+      --accent-green: #81c784;
+      --dark-green: #1b5e20;
+    }
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, var(--very-light-green) 0%, #c8e6c9 50%, var(--accent-green) 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .login-card {
+      width: 100%;
+      max-width: 420px;
+      border: none;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(46, 125, 50, 0.15), 0 4px 12px rgba(0,0,0,0.08);
+      overflow: hidden;
+    }
+    
+    .login-header {
+      background: linear-gradient(135deg, var(--primary-green), var(--secondary-green));
+      padding: 2rem 2rem 1.5rem;
+      text-align: center;
+    }
+    
+    .login-header .logo-img {
+      height: 48px;
+      background: white;
+      padding: 6px;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+    }
+    
+    .login-header h1 {
+      color: white;
+      font-size: 1.4rem;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+    
+    .login-header p {
+      color: rgba(255,255,255,0.8);
+      font-size: 0.85rem;
+      margin-bottom: 0;
+    }
+    
+    .login-body {
+      padding: 2rem;
+      background: white;
+    }
+    
+    .form-label {
+      font-weight: 500;
+      color: #333;
+      font-size: 0.875rem;
+    }
+    
+    .form-control {
+      border-radius: 8px;
+      border: 1.5px solid #e0e0e0;
+      padding: 0.6rem 0.85rem;
+      font-size: 0.9rem;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .form-control:focus {
+      border-color: var(--light-green);
+      box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.15);
+    }
+    
+    .btn-login {
+      background: linear-gradient(135deg, var(--primary-green), var(--secondary-green));
+      border: none;
+      border-radius: 8px;
+      padding: 0.65rem;
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: white;
+      transition: all 0.2s ease;
+    }
+    
+    .btn-login:hover {
+      background: linear-gradient(135deg, var(--dark-green), var(--primary-green));
+      color: white;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(46, 125, 50, 0.3);
+    }
+    
+    .domain-hint {
+      color: #999;
+      font-size: 0.78rem;
+      margin-top: 0.25rem;
+    }
+    
+    .alert {
+      border-radius: 8px;
+      font-size: 0.875rem;
+    }
+    
+    .login-footer {
+      background: #fafafa;
+      padding: 1rem 2rem;
+      text-align: center;
+      border-top: 1px solid #f0f0f0;
+    }
+    
+    .login-footer span {
+      color: #999;
+      font-size: 0.78rem;
+    }
+    
+    .input-group-text {
+      background: var(--very-light-green);
+      border-color: #e0e0e0;
+      color: var(--primary-green);
+    }
+  </style>
+</head>
+<body>
+  <div class="login-card card">
+    <!-- Header -->
+    <div class="login-header">
+      <img src="/dashboard/logo_clean.png" alt="EcoSave" class="logo-img">
+      <h1>EcoSave Notifications</h1>
+      <p>Sign in to access the admin dashboard</p>
+    </div>
+    
+    <!-- Body -->
+    <div class="login-body">
+      {% if error %}
+        <div class="alert alert-danger d-flex align-items-center mb-3" role="alert">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>
+          <div>{{ error }}</div>
+        </div>
+      {% endif %}
+      
+      {% if rate_limited %}
+        <div class="alert alert-warning d-flex align-items-center mb-3" role="alert">
+          <i class="bi bi-clock-fill me-2"></i>
+          <div>Too many failed attempts. Try again in 15 minutes.</div>
+        </div>
+      {% endif %}
+      
+      <form method="POST" action="/dashboard/login" id="loginForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        
+        <div class="mb-3">
+          <label for="email" class="form-label">Email Address</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-envelope-fill"></i></span>
+            <input type="email" class="form-control" id="email" name="email" 
+                   placeholder="name@ecosave-group.com" required autocomplete="email"
+                   {% if not rate_limited %}autofocus{% endif %}>
+          </div>
+          <div class="domain-hint">Must be an @ecosave-group.com address</div>
+        </div>
+        
+        <div class="mb-4">
+          <label for="password" class="form-label">Password</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+            <input type="password" class="form-control" id="password" name="password" 
+                   placeholder="Enter your password" required autocomplete="current-password">
+            <button class="btn btn-outline-secondary bg-white border-start-0" type="button" onclick="toggleVisibility('password', 'toggleIcon')">
+              <i class="bi bi-eye-fill text-muted" id="toggleIcon"></i>
+            </button>
+          </div>
+        </div>
+        
+        <button type="submit" class="btn btn-login w-100" id="loginButton"
+                {% if rate_limited %}disabled{% endif %}>
+          <i class="bi bi-box-arrow-in-right me-1"></i> Sign In
+        </button>
+      </form>
+      
+      <script>
+        function toggleVisibility(inputId, iconId) {
+          const input = document.getElementById(inputId);
+          const icon = document.getElementById(iconId);
+          if (input.type === 'password') {
+            input.type = 'text';
+            icon.classList.remove('bi-eye-fill');
+            icon.classList.add('bi-eye-slash-fill');
+          } else {
+            input.type = 'password';
+            icon.classList.remove('bi-eye-slash-fill');
+            icon.classList.add('bi-eye-fill');
+          }
+        }
+      </script>
+    </div>
+    
+    <!-- Footer -->
+    <div class="login-footer">
+      <span>&copy; 2026 EcoSave Home Solutions. All rights reserved.</span>
+    </div>
+  </div>
+  
+  <!-- Bootstrap 5 Bundle JS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
