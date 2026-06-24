@@ -8,3 +8,14 @@ credentials/
 venv/
 .pytest_cache/
 *.egg-info/
+ngrok.exe
+*.md
+*_audit.md
+wipe_data.py
+patch.py
+_run_staff_migration.py
+run_alert_migration.py
+get_fields.py
+storage.sqlite
+*.sqlite
+*.log
