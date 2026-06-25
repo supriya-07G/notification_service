@@ -12,6 +12,7 @@ const SAMPLE_DATA = {
 let currentQuill = null;
 let currentTemplateId = null;
 let currentChannel = 'sms';
+let currentRawBody = '';
 
 // Initialize the editor UI
 function openTemplateEditor(templateId) {
@@ -67,10 +68,34 @@ function openTemplateEditor(templateId) {
                 });
             }
             
-            // Set content
-            // We use clipboard.dangerouslyPasteHTML to preserve formatting
-            currentQuill.clipboard.dangerouslyPasteHTML(data.body || '');
-            
+            // Store raw body for email preview (Quill mangles full HTML docs)
+            currentRawBody = data.body || '';
+
+            // Set content — for email use a textarea-style approach via Quill
+            if (data.channel === 'email') {
+                // Quill can't handle full HTML docs; put raw HTML in a plain textarea instead
+                document.getElementById('editor').style.display = 'none';
+                let ta = document.getElementById('email-raw-editor');
+                if (!ta) {
+                    ta = document.createElement('textarea');
+                    ta.id = 'email-raw-editor';
+                    ta.className = 'form-control font-monospace small';
+                    ta.style.cssText = 'height:300px;resize:vertical;';
+                    document.getElementById('editor').insertAdjacentElement('afterend', ta);
+                    ta.addEventListener('input', function() {
+                        currentRawBody = ta.value;
+                        debounceUpdatePreview();
+                    });
+                }
+                ta.style.display = '';
+                ta.value = currentRawBody;
+            } else {
+                document.getElementById('editor').style.display = '';
+                const ta = document.getElementById('email-raw-editor');
+                if (ta) ta.style.display = 'none';
+                currentQuill.clipboard.dangerouslyPasteHTML(currentRawBody);
+            }
+
             updatePreview();
         })
         .catch(err => {
@@ -87,10 +112,21 @@ function closeTemplateEditor() {
 }
 
 function insertPlaceholder(placeholder) {
+    const token = `{{${placeholder}}}`;
+    if (currentChannel === 'email') {
+        const ta = document.getElementById('email-raw-editor');
+        if (!ta) return;
+        const start = ta.selectionStart;
+        ta.value = ta.value.slice(0, start) + token + ta.value.slice(ta.selectionEnd);
+        ta.selectionStart = ta.selectionEnd = start + token.length;
+        currentRawBody = ta.value;
+        debounceUpdatePreview();
+        return;
+    }
     if (!currentQuill) return;
     const range = currentQuill.getSelection(true);
-    currentQuill.insertText(range.index, `{{${placeholder}}}`);
-    currentQuill.setSelection(range.index + placeholder.length + 4);
+    currentQuill.insertText(range.index, token);
+    currentQuill.setSelection(range.index + token.length);
 }
 
 let previewTimeout = null;
@@ -100,31 +136,39 @@ function debounceUpdatePreview() {
 }
 
 function updatePreview() {
+    const previewEl = document.getElementById('preview-content');
+
+    if (currentChannel === 'email') {
+        // Use raw body directly — Quill cannot handle full HTML docs
+        let content = currentRawBody;
+        for (const [key, value] of Object.entries(SAMPLE_DATA)) {
+            content = content.replace(new RegExp(`{{${key}}}`, 'g'), value);
+        }
+        previewEl.style.whiteSpace = 'normal';
+        previewEl.style.padding = '0';
+        previewEl.innerHTML = `<iframe id="email-preview-frame" style="width:100%;height:420px;border:none;border-radius:4px;" sandbox="allow-same-origin"></iframe>`;
+        // srcdoc must be set via JS property to handle special characters safely
+        document.getElementById('email-preview-frame').srcdoc = content;
+        // no char counter needed for email
+        document.getElementById('char-counter').innerHTML = '<i>Email length is practically unlimited.</i>';
+        return;
+    }
+
     if (!currentQuill) return;
-    
-    // Get raw HTML
+
+    // SMS: use Quill content
     let content = currentQuill.root.innerHTML;
-    
-    // Check SMS length based on plain text
     let plainText = currentQuill.getText().replace(/\n$/, '');
-    
-    // Replace placeholders with SAMPLE_DATA in BOTH content and plainText
+
     for (const [key, value] of Object.entries(SAMPLE_DATA)) {
         const regex = new RegExp(`{{${key}}}`, 'g');
         content = content.replace(regex, `<span class="bg-warning bg-opacity-25">${value}</span>`);
         plainText = plainText.replace(regex, value);
     }
-    
-    const previewEl = document.getElementById('preview-content');
-    if (currentChannel === 'email') {
-        previewEl.style.whiteSpace = 'normal';
-        previewEl.style.padding = '0';
-        previewEl.innerHTML = `<iframe srcdoc="${content.replace(/"/g, '&quot;')}" style="width:100%;height:420px;border:none;border-radius:4px;" sandbox="allow-same-origin"></iframe>`;
-    } else {
-        previewEl.style.whiteSpace = 'pre-wrap';
-        previewEl.style.padding = '';
-        previewEl.innerHTML = content;
-    }
+
+    previewEl.style.whiteSpace = 'pre-wrap';
+    previewEl.style.padding = '';
+    previewEl.innerHTML = content;
 
     // Update Character Counter
     if (currentChannel === 'sms') {
@@ -208,9 +252,12 @@ function revertTemplate() {
 }
 
 function saveTemplate() {
-    if (!currentQuill || !currentTemplateId) return;
-    
-    const bodyHtml = currentQuill.root.innerHTML;
+    if (!currentTemplateId) return;
+
+    const ta = document.getElementById('email-raw-editor');
+    const bodyHtml = (currentChannel === 'email' && ta)
+        ? ta.value
+        : (currentQuill ? currentQuill.root.innerHTML : '');
     const subject = document.getElementById('template-subject').value;
     
     const btn = document.getElementById('btn-save');
