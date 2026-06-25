@@ -115,8 +115,17 @@ function updatePreview() {
         plainText = plainText.replace(regex, value);
     }
     
-    document.getElementById('preview-content').innerHTML = content;
-    
+    const previewEl = document.getElementById('preview-content');
+    if (currentChannel === 'email') {
+        previewEl.style.whiteSpace = 'normal';
+        previewEl.style.padding = '0';
+        previewEl.innerHTML = `<iframe srcdoc="${content.replace(/"/g, '&quot;')}" style="width:100%;height:420px;border:none;border-radius:4px;" sandbox="allow-same-origin"></iframe>`;
+    } else {
+        previewEl.style.whiteSpace = 'pre-wrap';
+        previewEl.style.padding = '';
+        previewEl.innerHTML = content;
+    }
+
     // Update Character Counter
     if (currentChannel === 'sms') {
         const stats = countSmsCharacters(plainText);
@@ -341,10 +350,21 @@ function updateNewPreview() {
     }
     
     const previewEl = document.getElementById('new_preview');
-    if (previewEl) previewEl.innerHTML = content || '(Type message body to preview)';
-    
     const channelSelect = document.querySelector('#addTemplateCard select[name="channel"]');
     const channel = channelSelect ? channelSelect.value.toLowerCase() : 'sms';
+    if (previewEl) {
+        if (channel === 'email') {
+            previewEl.style.whiteSpace = 'normal';
+            previewEl.style.padding = '0';
+            previewEl.innerHTML = content
+                ? `<iframe srcdoc="${content.replace(/"/g, '&quot;')}" style="width:100%;height:300px;border:none;border-radius:4px;" sandbox="allow-same-origin"></iframe>`
+                : '(Type message body to preview)';
+        } else {
+            previewEl.style.whiteSpace = 'pre-wrap';
+            previewEl.style.padding = '';
+            previewEl.innerHTML = content || '(Type message body to preview)';
+        }
+    }
     
     const lengthSpan = document.getElementById('new_preview_len');
     const warningSpan = document.getElementById('new_preview_sms_warning');
