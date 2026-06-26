@@ -17,9 +17,11 @@ from routes.sendgrid_status import router as sendgrid_router
 from routes.clickup_webhook import router as clickup_router
 from routes.dashboard import router as dashboard_router
 
-run_migration()
-
 app = FastAPI(title="Notification Service", docs_url=None, redoc_url=None)
+
+@app.on_event("startup")
+def on_startup():
+    run_migration()
 
 app.include_router(sms_router)
 app.include_router(status_router)

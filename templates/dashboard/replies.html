@@ -237,7 +237,8 @@
         applyFilters();
       } catch (e) {
         this.checked = !resolved;
-        alert("Failed to update. Please try again.");
+        console.error("Resolve failed:", e.message);
+        alert("Failed to update: " + e.message);
       }
     });
   });
