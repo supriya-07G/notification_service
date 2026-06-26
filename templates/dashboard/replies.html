@@ -13,25 +13,30 @@
 <!-- Filters -->
 <div class="card shadow-sm mb-3">
   <div class="card-body py-2">
-    <div class="row g-2 align-items-center">
+    <div class="row g-2 align-items-end">
       <div class="col-auto">
-        <label class="form-label small mb-0 fw-semibold">From</label>
-        <input type="date" id="filterFrom" class="form-control form-control-sm" style="width:150px;">
+        <label class="form-label small mb-1 fw-semibold">From Date</label>
+        <input type="date" id="filterFrom" class="form-control form-control-sm" style="width:160px;">
       </div>
       <div class="col-auto">
-        <label class="form-label small mb-0 fw-semibold">To</label>
-        <input type="date" id="filterTo" class="form-control form-control-sm" style="width:150px;">
+        <label class="form-label small mb-1 fw-semibold">To Date</label>
+        <input type="date" id="filterTo" class="form-control form-control-sm" style="width:160px;">
       </div>
-      <div class="col-auto d-flex align-items-end gap-3 mt-1">
-        <div class="form-check form-switch mb-0">
+      <div class="col-auto">
+        <div class="form-check form-switch mb-1">
           <input class="form-check-input" type="checkbox" id="toggleResolved" role="switch">
           <label class="form-check-label small" for="toggleResolved">Show resolved</label>
         </div>
       </div>
-      <div class="col-auto d-flex align-items-end mt-1">
+      <div class="col-auto">
+        <button class="btn btn-sm btn-success" id="btnApplyFilters">
+          <i class="bi bi-funnel-fill me-1"></i>Apply
+        </button>
+      </div>
+      <div class="col-auto">
         <button class="btn btn-sm btn-outline-secondary" id="btnClearFilters">Clear</button>
       </div>
-      <div class="col-auto ms-auto d-flex align-items-end mt-1">
+      <div class="col-auto ms-auto">
         <span class="text-muted small" id="visibleCount"></span>
       </div>
     </div>
@@ -141,28 +146,29 @@
 {% block scripts %}
 <script>
 (function () {
-  const rows        = Array.from(document.querySelectorAll(".reply-row"));
-  const filterFrom  = document.getElementById("filterFrom");
-  const filterTo    = document.getElementById("filterTo");
-  const toggleRes   = document.getElementById("toggleResolved");
-  const clearBtn    = document.getElementById("btnClearFilters");
-  const countEl     = document.getElementById("visibleCount");
-  const emptyMsg    = document.getElementById("emptyMsg");
-  const table       = document.getElementById("repliesTable");
+  const rows       = Array.from(document.querySelectorAll(".reply-row"));
+  const filterFrom = document.getElementById("filterFrom");
+  const filterTo   = document.getElementById("filterTo");
+  const toggleRes  = document.getElementById("toggleResolved");
+  const applyBtn   = document.getElementById("btnApplyFilters");
+  const clearBtn   = document.getElementById("btnClearFilters");
+  const countEl    = document.getElementById("visibleCount");
+  const emptyMsg   = document.getElementById("emptyMsg");
+  const table      = document.getElementById("repliesTable");
 
   function applyFilters() {
-    const from      = filterFrom ? filterFrom.value : "";
-    const to        = filterTo   ? filterTo.value   : "";
-    const showRes   = toggleRes  ? toggleRes.checked : false;
-    let visible = 0;
+    const from    = filterFrom ? filterFrom.value.trim() : "";
+    const to      = filterTo   ? filterTo.value.trim()   : "";
+    const showRes = toggleRes  ? toggleRes.checked        : false;
+    let visible   = 0;
 
     rows.forEach(row => {
       const isResolved = row.dataset.resolved === "true";
-      const rowDate    = row.dataset.date || "";
+      const rowDate    = (row.dataset.date || "").substring(0, 10);
 
-      if (isResolved && !showRes) { row.style.display = "none"; return; }
-      if (from && rowDate < from)  { row.style.display = "none"; return; }
-      if (to   && rowDate > to)    { row.style.display = "none"; return; }
+      if (isResolved && !showRes)          { row.style.display = "none"; return; }
+      if (from && rowDate && rowDate < from) { row.style.display = "none"; return; }
+      if (to   && rowDate && rowDate > to)   { row.style.display = "none"; return; }
 
       row.style.display = "";
       visible++;
@@ -175,20 +181,21 @@
     }
   }
 
-  if (filterFrom) filterFrom.addEventListener("change", applyFilters);
-  if (filterTo)   filterTo.addEventListener("change",   applyFilters);
-  if (toggleRes)  toggleRes.addEventListener("change",  applyFilters);
+  if (applyBtn) applyBtn.addEventListener("click", applyFilters);
+
+  // Toggle fires immediately without needing Apply
+  if (toggleRes) toggleRes.addEventListener("change", applyFilters);
 
   if (clearBtn) {
     clearBtn.addEventListener("click", () => {
-      if (filterFrom) filterFrom.value = "";
-      if (filterTo)   filterTo.value   = "";
+      if (filterFrom) filterFrom.value  = "";
+      if (filterTo)   filterTo.value    = "";
       if (toggleRes)  toggleRes.checked = false;
       applyFilters();
     });
   }
 
-  // Run on load to hide resolved rows by default
+  // Hide resolved rows on initial load
   applyFilters();
 
   // Resolve checkbox handler
