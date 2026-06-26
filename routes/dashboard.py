@@ -843,6 +843,7 @@ async def templates_page(request: Request, saved: bool = False, error: str = "")
                 "templates": items,
                 "saved": saved,
                 "error": error,
+                "csrf_token": generate_csrf_token(),
                 "user": user,
                 **nav
             }
