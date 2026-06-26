@@ -212,8 +212,9 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ resolved })
         });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data = await resp.json();
-        if (!data.success) throw new Error("Server error");
+        if (!data.success) throw new Error(data.error || "Server error");
 
         row.dataset.resolved = resolved ? "true" : "false";
 

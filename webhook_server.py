@@ -10,11 +10,14 @@ Run:  python webhook_server.py
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 
+from db.migrate import run_migration
 from routes.sms_inbound import router as sms_router
 from routes.status_callback import router as status_router
 from routes.sendgrid_status import router as sendgrid_router
 from routes.clickup_webhook import router as clickup_router
 from routes.dashboard import router as dashboard_router
+
+run_migration()
 
 app = FastAPI(title="Notification Service", docs_url=None, redoc_url=None)
 
