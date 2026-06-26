@@ -134,8 +134,8 @@
                         <button type="submit" class="btn btn-sm btn-outline-success">Activate</button>
                       {% endif %}
                     </form>
-                    <button type="button" class="btn btn-sm btn-outline-secondary"
-                      onclick="openResetModal({{ member.id }}, {{ member.email | tojson }})">
+                    <button type="button" class="btn btn-sm btn-outline-secondary btn-reset-pw"
+                      data-id="{{ member.id }}" data-email="{{ member.email | e }}">
                       <i class="bi bi-key"></i> Reset Password
                     </button>
                   </div>
@@ -198,13 +198,17 @@
 </div>
 
 <script>
-  function openResetModal(id, email) {
-    document.getElementById('resetPasswordForm').action = '/dashboard/staff/' + id + '/reset-password';
-    document.getElementById('reset-email-label').textContent = email;
-    document.getElementById('reset_new_password').value = '';
-    document.getElementById('reset_confirm_password').value = '';
-    new bootstrap.Modal(document.getElementById('resetPasswordModal')).show();
-  }
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.btn-reset-pw').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        document.getElementById('resetPasswordForm').action = '/dashboard/staff/' + btn.dataset.id + '/reset-password';
+        document.getElementById('reset-email-label').textContent = btn.dataset.email;
+        document.getElementById('reset_new_password').value = '';
+        document.getElementById('reset_confirm_password').value = '';
+        new bootstrap.Modal(document.getElementById('resetPasswordModal')).show();
+      });
+    });
+  });
 
   function toggleVisibility(inputId, iconId) {
     const input = document.getElementById(inputId);
