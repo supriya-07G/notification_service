@@ -1587,7 +1587,9 @@ async def api_test_send_template(request: Request, id: int, data: dict = Body(..
             "calendar_source": "hvac",
         }
         from db.templates import render_template
+        from channels.sendgrid_email import LOGO_BANNER_HTML
         body = render_template(tmpl["body"], sample_data)
+        body = body.replace("[LOGO_BANNER]", LOGO_BANNER_HTML)
 
         if tmpl["channel"] == "sms":
             from channels.twilio_sms import send as sms_send
@@ -1600,7 +1602,7 @@ async def api_test_send_template(request: Request, id: int, data: dict = Body(..
             import config
             sg = SendGridAPIClient(config.SENDGRID_API_KEY)
             msg = Mail(from_email=config.SENDGRID_FROM_EMAIL, to_emails=to,
-                       subject=tmpl.get("subject") or "Test notification",
+                       subject=tmpl["subject"] or "Test notification",
                        html_content=body)
             sg.send(msg)
             return {"success": True, "message": f"Test email sent to {to}"}
