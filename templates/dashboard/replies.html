@@ -218,19 +218,21 @@
         row.dataset.resolved = resolved ? "true" : "false";
 
         if (resolved) {
-          row.classList.remove("table-warning");
-          row.classList.add("table-success", "opacity-75", "resolved-row");
+          // Add Done label so it shows correctly when Show Resolved is on
           if (!span) {
             const s = document.createElement("span");
             s.className = "done-label text-success small fw-semibold";
             s.textContent = "Done";
             this.parentElement.appendChild(s);
           }
+          row.classList.remove("table-warning");
+          row.classList.add("table-success", "opacity-75", "resolved-row");
         } else {
           row.classList.remove("table-success", "opacity-75", "resolved-row");
           if (span) span.remove();
         }
 
+        // Hide immediately if Show Resolved is off
         applyFilters();
       } catch (e) {
         this.checked = !resolved;
