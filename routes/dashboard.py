@@ -799,7 +799,7 @@ async def api_resolve_reply(reply_id: int, request: Request):
 
     data = await request.json()
     resolved = bool(data.get("resolved", True))
-    username = user.get("username", "unknown")
+    username = user.get("email", "unknown")
 
     conn = get_connection()
     try:
