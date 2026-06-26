@@ -35,8 +35,30 @@ def validate_twilio(request: Request, form_data: dict) -> None:
         raise HTTPException(status_code=403, detail="Invalid Twilio signature")
 
 
-_STOP_WORDS = frozenset({"STOP", "STOPALL", "UNSUBSCRIBE", "CANCEL", "END"})
-_START_WORDS = frozenset({"START", "UNSTOP", "YES", "SUBSCRIBE"})
+_STOP_WORDS    = frozenset({"STOP", "STOPALL", "UNSUBSCRIBE", "CANCEL", "END"})
+_START_WORDS   = frozenset({"START", "UNSTOP", "YES", "SUBSCRIBE"})
+_CONFIRM_WORDS = frozenset({"YES", "Y", "YEP", "YEAH", "YEA", "CONFIRM", "CONFIRMED", "1", "OK", "OKAY", "SURE"})
+_RESCHEDULE_KW = ["reschedule", "rescheduling", "change", "different time", "move", "postpone", "cancel and rebook", "different day"]
+_QUESTION_KW   = ["?", "when", "where", "what", "how", "who", "can i", "will you", "is there", "do you", "are you"]
+
+_STATUS_EMOJI = {
+    "stop":               "🚫",
+    "start":              "✅",
+    "confirm":            "✅",
+    "reschedule_request": "🔄",
+    "question":           "❓",
+    "unknown":            "💬",
+}
+
+def _classify(body: str) -> str:
+    upper = body.strip().upper()
+    clean = body.strip().lower()
+    if upper in _STOP_WORDS:    return "stop"
+    if upper in _START_WORDS:   return "start"
+    if upper in _CONFIRM_WORDS: return "confirm"
+    if any(k in clean for k in _RESCHEDULE_KW): return "reschedule_request"
+    if any(k in clean for k in _QUESTION_KW):   return "question"
+    return "unknown"
 
 
 @router.post("/webhooks/twilio/sms")
@@ -82,20 +104,22 @@ async def sms_inbound(request: Request):
     finally:
         conn.close()
 
-    _notify_discord(from_phone, body)
+    _notify_discord(from_phone, body, _classify(body))
 
     return Response(content="<Response/>", media_type="application/xml")
 
 
-def _notify_discord(from_phone: str, body: str) -> None:
+def _notify_discord(from_phone: str, body: str, status: str = "unknown") -> None:
     """Fire-and-forget POST to Discord webhook."""
     url = config.DISCORD_WEBHOOK_URL
     if not url:
         return
     try:
         import json as _json
+        emoji = _STATUS_EMOJI.get(status, "💬")
+        label = status.replace("_", " ").title()
         payload = _json.dumps({
-            "content": f"📩 **Customer Reply**\n**From:** {from_phone}\n**Message:** {body}"
+            "content": f"📩 **Customer Reply**\n**From:** {from_phone}\n**Status:** {emoji} {label}\n**Message:** {body}"
         }).encode()
         req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
         urllib.request.urlopen(req, timeout=5)
