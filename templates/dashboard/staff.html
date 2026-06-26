@@ -124,24 +124,24 @@
                 </td>
                 <td class="small">{{ member.last_login_at or 'Never' }}</td>
                 <td class="text-end pe-3">
-                  {% if member.email != user.get('email') %}
                   <div class="d-flex gap-1 justify-content-end">
-                    <form action="/dashboard/staff/{{ member.id }}/toggle" method="POST" class="d-inline">
-                      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                      {% if member.is_active %}
-                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Deactivate {{ member.email }}?')">Deactivate</button>
-                      {% else %}
-                        <button type="submit" class="btn btn-sm btn-outline-success">Activate</button>
-                      {% endif %}
-                    </form>
+                    {% if member.email != user.get('email') %}
+                      <form action="/dashboard/staff/{{ member.id }}/toggle" method="POST" class="d-inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        {% if member.is_active %}
+                          <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Deactivate {{ member.email }}?')">Deactivate</button>
+                        {% else %}
+                          <button type="submit" class="btn btn-sm btn-outline-success">Activate</button>
+                        {% endif %}
+                      </form>
+                    {% else %}
+                      <span class="badge bg-light text-muted border me-1">You</span>
+                    {% endif %}
                     <button type="button" class="btn btn-sm btn-outline-secondary btn-reset-pw"
                       data-id="{{ member.id }}" data-email="{{ member.email | e }}">
                       <i class="bi bi-key"></i> Reset Password
                     </button>
                   </div>
-                  {% else %}
-                    <span class="text-muted small text-end fst-italic">You</span>
-                  {% endif %}
                 </td>
               </tr>
             {% endfor %}
