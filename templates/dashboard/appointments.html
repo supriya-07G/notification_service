@@ -266,10 +266,62 @@
             <div class="col-md-6">
               <label for="appointment_type" class="form-label font-weight-medium">Appointment Type <span class="text-danger">*</span></label>
               <select class="form-select" id="appointment_type" name="appointment_type" required>
-                <option value="estimate">Estimate</option>
-                <option value="install">Install</option>
-                <option value="service" selected>Service</option>
-                <option value="inspection">Inspection</option>
+                <optgroup label="General">
+                  <option value="estimate">Estimate</option>
+                  <option value="install">Install</option>
+                  <option value="service" selected>Service</option>
+                  <option value="inspection">Inspection</option>
+                </optgroup>
+                <optgroup label="HVAC">
+                  <option value="hvac">HVAC</option>
+                  <option value="heat pump">Heat Pump</option>
+                  <option value="mini-split">Mini-Split</option>
+                  <option value="central ac">Central AC</option>
+                </optgroup>
+                <optgroup label="Insulation">
+                  <option value="insulation">Insulation</option>
+                  <option value="attic insulation">Attic Insulation</option>
+                  <option value="wall insulation">Wall Insulation</option>
+                  <option value="basement insulation">Basement Insulation</option>
+                </optgroup>
+                <optgroup label="Electrical">
+                  <option value="electrical">Electrical</option>
+                  <option value="electrical upgrade">Electrical Upgrade</option>
+                  <option value="main panel upgrade">Main Panel Upgrade</option>
+                  <option value="ev charger">EV Charger</option>
+                  <option value="electric baseboard">Electric Baseboard</option>
+                  <option value="meter relocation">Meter Relocation</option>
+                  <option value="knob & tube">Knob &amp; Tube</option>
+                </optgroup>
+                <optgroup label="Water / Oil">
+                  <option value="water heater">Water Heater</option>
+                  <option value="oil tank removal">Oil Tank Removal</option>
+                  <option value="boiler removal">Boiler Removal</option>
+                </optgroup>
+                <optgroup label="Remediation">
+                  <option value="vermiculite">Vermiculite</option>
+                  <option value="asbestos remediation">Asbestos Remediation</option>
+                  <option value="mold remediation">Mold Remediation</option>
+                </optgroup>
+                <optgroup label="Solar">
+                  <option value="solar">Solar</option>
+                  <option value="battery storage">Battery Storage</option>
+                </optgroup>
+                <optgroup label="Roof">
+                  <option value="roof">Roof</option>
+                  <option value="roof repair">Roof Repair</option>
+                  <option value="roof replacement">Roof Replacement</option>
+                </optgroup>
+                <optgroup label="Other">
+                  <option value="tree work">Tree Work</option>
+                  <option value="air sealing">Air Sealing</option>
+                  <option value="gas furnace">Gas Furnace</option>
+                  <option value="mass save / rebates">Mass Save / Rebates</option>
+                  <option value="energy assessment">Energy Assessment</option>
+                  <option value="generator / backup power">Generator / Backup Power</option>
+                  <option value="maintenance">Maintenance</option>
+                  <option value="other">Other</option>
+                </optgroup>
               </select>
             </div>
             
