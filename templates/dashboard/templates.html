@@ -223,9 +223,18 @@
                 
                 <!-- Actions -->
                 <td>
-                  <button class="btn btn-sm btn-outline-primary py-0 px-2 small" type="button" onclick="openTemplateEditor({{ t.id }})">
-                    <i class="bi bi-pencil"></i> Edit
-                  </button>
+                  <div class="d-flex gap-1">
+                    <button class="btn btn-sm btn-outline-primary py-0 px-2 small" type="button" onclick="openTemplateEditor({{ t.id }})">
+                      <i class="bi bi-pencil"></i> Edit
+                    </button>
+                    <form action="/dashboard/templates/{{ t.id }}/delete" method="POST" class="d-inline"
+                          onsubmit="return confirm('Delete this template? This cannot be undone.')">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                      <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2 small">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </form>
+                  </div>
                 </td>
               </tr>
             {% endfor %}
