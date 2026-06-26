@@ -1247,6 +1247,7 @@ async def staff_list(request: Request):
                 "request": request,
                 "active_page": "staff",
                 "staff_members": staff_members,
+                "csrf_token": generate_csrf_token(),
                 "user": user,
                 **nav
             }
