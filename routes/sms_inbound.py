@@ -5,6 +5,7 @@ Rule 5: STOP/CANCEL/END/STOPALL/UNSUBSCRIBE → opt-out; START/UNSTOP/YES/SUBSCR
 """
 
 import logging
+import urllib.request
 
 from fastapi import APIRouter, HTTPException, Request, Response
 from twilio.request_validator import RequestValidator
@@ -81,4 +82,22 @@ async def sms_inbound(request: Request):
     finally:
         conn.close()
 
+    _notify_discord(from_phone, body)
+
     return Response(content="<Response/>", media_type="application/xml")
+
+
+def _notify_discord(from_phone: str, body: str) -> None:
+    """Fire-and-forget POST to Discord webhook."""
+    url = config.DISCORD_WEBHOOK_URL
+    if not url:
+        return
+    try:
+        import json as _json
+        payload = _json.dumps({
+            "content": f"📩 **Customer Reply**\n**From:** {from_phone}\n**Message:** {body}"
+        }).encode()
+        req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
+        urllib.request.urlopen(req, timeout=5)
+    except Exception as exc:
+        logger.warning("Discord notify failed: %s", exc)

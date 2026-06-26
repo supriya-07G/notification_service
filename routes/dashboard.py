@@ -1600,7 +1600,8 @@ async def api_get_alerts(request: Request):
             "alert_sms_to": settings.get("alert_sms_to", ""),
             "alert_sms_use_staff": settings.get("alert_sms_use_staff", "true") == "true",
             "alert_email_from": settings.get("alert_email_from", ""),
-            "alert_email_to": settings.get("alert_email_to", "")
+            "alert_email_to": settings.get("alert_email_to", ""),
+            "alert_email_use_staff": settings.get("alert_email_use_staff", "true") == "true"
         }
     finally:
         conn.close()
@@ -1668,6 +1669,7 @@ async def api_save_alerts(request: Request, data: dict = Body(...)):
         settings.set("alert_sms_use_staff", "true" if data.get("alert_sms_use_staff") else "false")
         settings.set("alert_email_from", email_from)
         settings.set("alert_email_to", ",".join(email_to_list))
+        settings.set("alert_email_use_staff", "true" if data.get("alert_email_use_staff") else "false")
         return {"success": True}
     finally:
         conn.close()

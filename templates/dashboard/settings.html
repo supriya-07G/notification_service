@@ -214,6 +214,14 @@
               <label for="alert_email_to" class="form-label small font-weight-medium">To Emails (Comma-separated)</label>
               <input type="text" class="form-control form-control-sm" id="alert_email_to" name="alert_email_to" placeholder="dispatch@ecosave.com, manager@ecosave.com">
             </div>
+            <div class="col-md-12">
+              <div class="form-check mt-2">
+                <input class="form-check-input" type="checkbox" id="alert_email_use_staff" name="alert_email_use_staff">
+                <label class="form-check-label small" for="alert_email_use_staff">
+                  Also send to all active staff (Must have a valid email address stored)
+                </label>
+              </div>
+            </div>
           </div>
 
           <div id="alertErrors" class="alert alert-danger d-none py-2 small mb-3"></div>
@@ -264,6 +272,7 @@ document.addEventListener("DOMContentLoaded", function() {
       document.getElementById("alert_sms_use_staff").checked = data.alert_sms_use_staff;
       document.getElementById("alert_email_from").value = data.alert_email_from || "";
       document.getElementById("alert_email_to").value = data.alert_email_to || "";
+      document.getElementById("alert_email_use_staff").checked = data.alert_email_use_staff;
     });
 
   // Save settings
@@ -279,7 +288,8 @@ document.addEventListener("DOMContentLoaded", function() {
       alert_sms_to: document.getElementById("alert_sms_to").value,
       alert_sms_use_staff: document.getElementById("alert_sms_use_staff").checked,
       alert_email_from: document.getElementById("alert_email_from").value,
-      alert_email_to: document.getElementById("alert_email_to").value
+      alert_email_to: document.getElementById("alert_email_to").value,
+      alert_email_use_staff: document.getElementById("alert_email_use_staff").checked
     };
 
     const originalText = btnSave.innerHTML;

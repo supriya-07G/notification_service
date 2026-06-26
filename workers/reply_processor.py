@@ -88,14 +88,23 @@ def send_sms_alert(message_row: dict, classification: str, appointment: dict, se
         except Exception as e:
             logger.warning(f"SMS alert failed to {to}: {e}")
 
-def send_email_alert(message_row: dict, classification: str, appointment: dict, settings: Settings):
+def send_email_alert(message_row: dict, classification: str, appointment: dict, settings: Settings, conn=None):
     if settings.get("alert_email_enabled", "true") != "true":
         return
-        
+
     email_from = settings.get("alert_email_from", config.SENDGRID_FROM_EMAIL)
     email_to_raw = settings.get("alert_email_to", "")
-    
-    recipients = [e.strip() for e in email_to_raw.split(",") if e.strip()]
+
+    recipients = set(e.strip() for e in email_to_raw.split(",") if e.strip())
+
+    if conn and settings.get("alert_email_use_staff", "true") == "true":
+        staff = conn.execute(
+            "SELECT email FROM admin_users WHERE is_active=1 AND email IS NOT NULL"
+        ).fetchall()
+        for s in staff:
+            if s["email"]:
+                recipients.add(s["email"].strip())
+
     if not recipients:
         return
         
@@ -146,7 +155,7 @@ def run():
             
             send_discord_alert(msg_dict, cl, appt_dict)
             send_sms_alert(msg_dict, cl, appt_dict, settings, conn)
-            send_email_alert(msg_dict, cl, appt_dict, settings)
+            send_email_alert(msg_dict, cl, appt_dict, settings, conn)
 
         conn.execute("""
             UPDATE inbound_messages
