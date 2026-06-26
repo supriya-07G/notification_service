@@ -905,6 +905,55 @@ async def toggle_no_reminder(request: Request, id: str, csrf_token: str = Form(.
     return RedirectResponse(url=referer, status_code=303)
 
 
+@router.post("/appointments/{id}/edit")
+async def edit_appointment(
+    request: Request,
+    id: str,
+    csrf_token: str = Form(...),
+    customer_name: str = Form(...),
+    customer_phone: str = Form(...),
+    customer_email: str = Form(""),
+    appointment_type: str = Form(...),
+    appointment_at: str = Form(...),
+    location: str = Form(""),
+    notes: str = Form(""),
+):
+    redirect = require_login(request)
+    if redirect:
+        return redirect
+    if not validate_csrf_token(csrf_token):
+        return RedirectResponse(url="/dashboard/appointments?error=Invalid+CSRF+token", status_code=303)
+
+    try:
+        parsed = phonenumbers.parse(customer_phone, "US")
+        formatted_phone = phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164) if phonenumbers.is_valid_number(parsed) else customer_phone.strip()
+    except Exception:
+        formatted_phone = customer_phone.strip()
+
+    conn = None
+    try:
+        conn = get_connection()
+        conn.execute(
+            """UPDATE appointments
+               SET customer_name = ?, customer_phone = ?, customer_email = ?,
+                   appointment_type = ?, appointment_at = ?, location = ?, notes = ?,
+                   updated_at = CURRENT_TIMESTAMP
+               WHERE id = ?""",
+            [customer_name.strip(), formatted_phone, customer_email.strip() or None,
+             appointment_type, appointment_at, location.strip() or None, notes.strip() or None, id]
+        )
+        conn.commit()
+    except Exception as e:
+        logger.error("Error editing appointment id=%s: %s", id, e)
+        return RedirectResponse(url="/dashboard/appointments?error=Failed+to+update+appointment", status_code=303)
+    finally:
+        if conn:
+            conn.close()
+
+    referer = request.headers.get("referer", "/dashboard/appointments")
+    return RedirectResponse(url=referer, status_code=303)
+
+
 @router.post("/appointments/{id}/delete")
 async def delete_appointment(request: Request, id: str, csrf_token: str = Form(...)):
     redirect = require_login(request)

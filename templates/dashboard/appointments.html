@@ -194,6 +194,21 @@
                         {% endif %}
                       </button>
                     </form>
+                    <!-- Edit -->
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-1 px-2 d-flex align-items-center gap-1"
+                      title="Edit appointment"
+                      onclick="openEditModal({
+                        id: '{{ appt.id }}',
+                        customer_name: {{ appt.customer_name | tojson }},
+                        customer_phone: {{ appt.customer_phone | tojson }},
+                        customer_email: {{ (appt.customer_email or '') | tojson }},
+                        appointment_type: {{ appt.appointment_type | tojson }},
+                        appointment_at: {{ appt.appointment_at | tojson }},
+                        location: {{ (appt.location or '') | tojson }},
+                        notes: {{ (appt.notes or '') | tojson }}
+                      })">
+                      <i class="bi bi-pencil"></i>
+                    </button>
                     <!-- Delete -->
                     <form action="/dashboard/appointments/{{ appt.id }}/delete" method="POST" class="d-inline"
                           onsubmit="return confirm('Delete appointment for {{ appt.customer_name }}? This cannot be undone.')">
@@ -299,4 +314,74 @@
     </div>
   </div>
 </div>
+
+<!-- Edit Appointment Modal -->
+<div class="modal fade" id="editAppointmentModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content border-success">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Edit Appointment</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" id="editAppointmentForm" action="">
+        <div class="modal-body">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label font-weight-medium">Customer Name <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" name="customer_name" id="edit_customer_name" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label font-weight-medium">Customer Phone <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" name="customer_phone" id="edit_customer_phone" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label font-weight-medium">Customer Email</label>
+              <input type="email" class="form-control" name="customer_email" id="edit_customer_email">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label font-weight-medium">Appointment Type <span class="text-danger">*</span></label>
+              <select class="form-select" name="appointment_type" id="edit_appointment_type" required>
+                <option value="estimate">Estimate</option>
+                <option value="install">Install</option>
+                <option value="service">Service</option>
+                <option value="inspection">Inspection</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label font-weight-medium">Date & Time <span class="text-danger">*</span></label>
+              <input type="datetime-local" class="form-control" name="appointment_at" id="edit_appointment_at" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label font-weight-medium">Location</label>
+              <input type="text" class="form-control" name="location" id="edit_location">
+            </div>
+            <div class="col-12">
+              <label class="form-label font-weight-medium">Notes</label>
+              <textarea class="form-control" name="notes" id="edit_notes" rows="2"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-success"><i class="bi bi-save me-1"></i>Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+function openEditModal(appt) {
+  document.getElementById('editAppointmentForm').action = '/dashboard/appointments/' + appt.id + '/edit';
+  document.getElementById('edit_customer_name').value = appt.customer_name;
+  document.getElementById('edit_customer_phone').value = appt.customer_phone;
+  document.getElementById('edit_customer_email').value = appt.customer_email || '';
+  document.getElementById('edit_appointment_type').value = appt.appointment_type;
+  document.getElementById('edit_appointment_at').value = appt.appointment_at ? appt.appointment_at.replace(' ', 'T').slice(0, 16) : '';
+  document.getElementById('edit_location').value = appt.location || '';
+  document.getElementById('edit_notes').value = appt.notes || '';
+  new bootstrap.Modal(document.getElementById('editAppointmentModal')).show();
+}
+</script>
 {% endblock %}
