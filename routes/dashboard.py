@@ -1381,6 +1381,50 @@ async def add_staff(
     finally:
         conn.close()
 
+@router.post("/staff/{id}/reset-password")
+async def reset_staff_password(
+    request: Request,
+    id: int,
+    csrf_token: str = Form(...),
+    new_password: str = Form(...),
+    confirm_password: str = Form(...),
+):
+    redirect = require_login(request)
+    if redirect:
+        return redirect
+    if not validate_csrf_token(csrf_token):
+        return RedirectResponse(url="/dashboard/staff?error=Invalid+CSRF+token", status_code=303)
+    user = get_current_user(request)
+    if not user or user.get("role") != "admin":
+        return RedirectResponse(url="/dashboard/", status_code=302)
+
+    from urllib.parse import urlencode
+    if new_password != confirm_password:
+        err = urlencode({"error": "Passwords do not match."})
+        return RedirectResponse(url=f"/dashboard/staff?{err}", status_code=303)
+
+    pw_errors = validate_password_strength(new_password)
+    if pw_errors:
+        err = urlencode({"error": " | ".join(pw_errors)})
+        return RedirectResponse(url=f"/dashboard/staff?{err}", status_code=303)
+
+    hashed = hash_password(new_password)
+    conn = None
+    try:
+        conn = get_connection()
+        conn.execute("UPDATE admin_users SET password_hash = ? WHERE id = ?", [hashed, id])
+        conn.commit()
+    except Exception as e:
+        logger.error("Error resetting password for staff id=%s: %s", id, e)
+        err = urlencode({"error": "Failed to reset password."})
+        return RedirectResponse(url=f"/dashboard/staff?{err}", status_code=303)
+    finally:
+        if conn:
+            conn.close()
+
+    return RedirectResponse(url="/dashboard/staff?success=true", status_code=303)
+
+
 @router.post("/staff/{id}/toggle")
 async def toggle_staff_status(request: Request, id: int, csrf_token: str = Form(...)):
     """Activate or deactivate a staff member. Admin only."""
