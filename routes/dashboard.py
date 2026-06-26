@@ -914,30 +914,36 @@ async def delete_appointment(request: Request, id: str, csrf_token: str = Form(.
     user = get_current_user(request)
     conn = get_connection()
     try:
-        # Fetch name for audit log before deleting
         row = conn.execute(
             "SELECT customer_name, customer_phone, appointment_at FROM appointments WHERE id = ?",
             [id]
         ).fetchone()
 
-        if row:
-            conn.execute("DELETE FROM appointments WHERE id = ?", [id])
-            # Also remove any notification attempts for this appointment
-            conn.execute("DELETE FROM notification_attempts WHERE appointment_id = ?", [id])
+        if not row:
+            return RedirectResponse(url="/dashboard/appointments?error=Appointment+not+found", status_code=303)
+
+        conn.execute("DELETE FROM appointments WHERE id = ?", [id])
+        conn.execute("DELETE FROM notification_attempts WHERE appointment_id = ?", [id])
+        try:
             conn.execute(
                 """INSERT INTO audit_log (action, source, entity_id, details)
                    VALUES ('appointment_deleted', 'dashboard', ?, ?)""",
                 [
                     id,
                     json.dumps({
-                        "deleted_by":    user.get("email") if user else "unknown",
+                        "deleted_by": user.get("email") if user else "unknown",
                         "customer_name": row["customer_name"],
                         "customer_phone": row["customer_phone"],
                         "appointment_at": row["appointment_at"],
                     })
                 ]
             )
-            conn.commit()
+        except Exception as audit_err:
+            logger.warning("audit_log insert failed (table may not exist): %s", audit_err)
+        conn.commit()
+    except Exception as e:
+        logger.error("Error deleting appointment id=%s: %s", id, e)
+        return RedirectResponse(url="/dashboard/appointments?error=Failed+to+delete+appointment", status_code=303)
     finally:
         conn.close()
 
