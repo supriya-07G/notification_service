@@ -1381,7 +1381,7 @@ async def add_staff(
     finally:
         conn.close()
 
-@router.post("/staff/{id}/reset-password")
+@router.post("/staff/{id}/reset-password", response_class=HTMLResponse)
 async def reset_staff_password(
     request: Request,
     id: int,
