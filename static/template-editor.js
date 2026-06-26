@@ -129,7 +129,7 @@ function updatePreview() {
         }
         html = html.replace(/\[LOGO_BANNER\]/g,
             `<div style="text-align:center;padding:16px 0 8px;background:#ffffff;">` +
-            `<img src="/dashboard/logo_partner.png" alt="EcoSave" style="max-width:220px;height:auto;">` +
+            `<img src="/dashboard/logo_clean.png" alt="EcoSave" style="max-width:220px;height:auto;">` +
             `</div><hr style="border:none;border-top:2px solid #2e7d32;margin:0 0 16px;">`
         );
         previewEl.style.cssText = 'padding:0;white-space:normal;';

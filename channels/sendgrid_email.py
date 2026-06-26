@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 LOGO_BANNER_HTML = """
 <div style="text-align:center;padding:16px 0 8px;background:#ffffff;">
-  <img src="https://spark-1bc3.tailea79dc.ts.net/dashboard/logo_partner.png"
+  <img src="https://spark-1bc3.tailea79dc.ts.net/dashboard/logo_clean.png"
        alt="EcoSave Home Solutions"
        style="max-width:220px;height:auto;display:inline-block;">
 </div>
