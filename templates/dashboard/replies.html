@@ -3,10 +3,38 @@
 {% block title %}Inbound Replies - EcoSave Dashboard{% endblock %}
 
 {% block content %}
-<div class="row mb-4">
+<div class="row mb-3">
   <div class="col-12 text-dark">
     <h1 class="h2 text-dark font-weight-bold">Inbound Replies</h1>
-    <p class="text-muted">SMS replies received from customers.</p>
+    <p class="text-muted mb-0">SMS replies received from customers.</p>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="card shadow-sm mb-3">
+  <div class="card-body py-2">
+    <div class="row g-2 align-items-center">
+      <div class="col-auto">
+        <label class="form-label small mb-0 fw-semibold">From</label>
+        <input type="date" id="filterFrom" class="form-control form-control-sm" style="width:150px;">
+      </div>
+      <div class="col-auto">
+        <label class="form-label small mb-0 fw-semibold">To</label>
+        <input type="date" id="filterTo" class="form-control form-control-sm" style="width:150px;">
+      </div>
+      <div class="col-auto d-flex align-items-end gap-3 mt-1">
+        <div class="form-check form-switch mb-0">
+          <input class="form-check-input" type="checkbox" id="toggleResolved" role="switch">
+          <label class="form-check-label small" for="toggleResolved">Show resolved</label>
+        </div>
+      </div>
+      <div class="col-auto d-flex align-items-end mt-1">
+        <button class="btn btn-sm btn-outline-secondary" id="btnClearFilters">Clear</button>
+      </div>
+      <div class="col-auto ms-auto d-flex align-items-end mt-1">
+        <span class="text-muted small" id="visibleCount"></span>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -16,21 +44,24 @@
   <div class="card-body p-0">
     {% if replies %}
       <div class="table-responsive">
-        <table class="table table-striped table-hover table-sm align-middle mb-0">
+        <table class="table table-striped table-hover table-sm align-middle mb-0" id="repliesTable">
           <thead>
             <tr>
               <th style="width: 5%;">Status</th>
               <th style="width: 14%;">From</th>
               <th style="width: 8%;">Channel</th>
-              <th style="width: 36%;">Message Body</th>
+              <th style="width: 35%;">Message Body</th>
               <th style="width: 13%;">Received</th>
-              <th style="width: 12%;">Classification</th>
+              <th style="width: 13%;">Classification</th>
               <th style="width: 12%;">Resolved</th>
             </tr>
           </thead>
           <tbody>
             {% for reply in replies %}
-              <tr class="{% if reply.resolved %}table-success opacity-75{% elif not reply.processed %}table-warning{% endif %}">
+              <tr class="reply-row {% if reply.resolved %}resolved-row table-success opacity-75{% elif not reply.processed %}table-warning{% endif %}"
+                  data-resolved="{{ 'true' if reply.resolved else 'false' }}"
+                  data-date="{{ reply.received_at[:10] if reply.received_at else '' }}">
+
                 <!-- Status icon / processed -->
                 <td>
                   {% if reply.processed %}
@@ -84,7 +115,7 @@
                            {% if reply.resolved %}checked{% endif %}
                            title="{% if reply.resolved %}Resolved by {{ reply.resolved_by }} at {{ reply.resolved_at }}{% else %}Mark as resolved{% endif %}">
                     {% if reply.resolved %}
-                      <span class="text-success small fw-semibold">Done</span>
+                      <span class="done-label text-success small fw-semibold">Done</span>
                     {% endif %}
                   </div>
                 </td>
@@ -92,6 +123,10 @@
             {% endfor %}
           </tbody>
         </table>
+      </div>
+      <div id="emptyMsg" class="text-center py-5 text-muted d-none">
+        <i class="bi bi-funnel display-4 mb-3 d-block"></i>
+        No replies match the current filters.
       </div>
     {% else %}
       <div class="text-center py-5 text-muted">
@@ -105,40 +140,97 @@
 
 {% block scripts %}
 <script>
-document.querySelectorAll(".resolve-checkbox").forEach(cb => {
-  cb.addEventListener("change", async function () {
-    const id = this.dataset.id;
-    const resolved = this.checked;
-    const row = this.closest("tr");
-    const span = this.parentElement.querySelector("span");
+(function () {
+  const rows        = Array.from(document.querySelectorAll(".reply-row"));
+  const filterFrom  = document.getElementById("filterFrom");
+  const filterTo    = document.getElementById("filterTo");
+  const toggleRes   = document.getElementById("toggleResolved");
+  const clearBtn    = document.getElementById("btnClearFilters");
+  const countEl     = document.getElementById("visibleCount");
+  const emptyMsg    = document.getElementById("emptyMsg");
+  const table       = document.getElementById("repliesTable");
 
-    try {
-      const resp = await fetch(`/dashboard/api/replies/${id}/resolve`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resolved })
-      });
-      const data = await resp.json();
-      if (!data.success) throw new Error("Server error");
+  function applyFilters() {
+    const from      = filterFrom ? filterFrom.value : "";
+    const to        = filterTo   ? filterTo.value   : "";
+    const showRes   = toggleRes  ? toggleRes.checked : false;
+    let visible = 0;
 
-      if (resolved) {
-        row.classList.remove("table-warning");
-        row.classList.add("table-success", "opacity-75");
-        if (!span) {
-          const s = document.createElement("span");
-          s.className = "text-success small fw-semibold";
-          s.textContent = "Done";
-          this.parentElement.appendChild(s);
-        }
-      } else {
-        row.classList.remove("table-success", "opacity-75");
-        if (span) span.remove();
-      }
-    } catch (e) {
-      this.checked = !resolved;
-      alert("Failed to update. Please try again.");
+    rows.forEach(row => {
+      const isResolved = row.dataset.resolved === "true";
+      const rowDate    = row.dataset.date || "";
+
+      if (isResolved && !showRes) { row.style.display = "none"; return; }
+      if (from && rowDate < from)  { row.style.display = "none"; return; }
+      if (to   && rowDate > to)    { row.style.display = "none"; return; }
+
+      row.style.display = "";
+      visible++;
+    });
+
+    if (countEl) countEl.textContent = `${visible} repl${visible === 1 ? "y" : "ies"}`;
+    if (emptyMsg && table) {
+      emptyMsg.classList.toggle("d-none", visible > 0);
+      table.classList.toggle("d-none", visible === 0);
     }
+  }
+
+  if (filterFrom) filterFrom.addEventListener("change", applyFilters);
+  if (filterTo)   filterTo.addEventListener("change",   applyFilters);
+  if (toggleRes)  toggleRes.addEventListener("change",  applyFilters);
+
+  if (clearBtn) {
+    clearBtn.addEventListener("click", () => {
+      if (filterFrom) filterFrom.value = "";
+      if (filterTo)   filterTo.value   = "";
+      if (toggleRes)  toggleRes.checked = false;
+      applyFilters();
+    });
+  }
+
+  // Run on load to hide resolved rows by default
+  applyFilters();
+
+  // Resolve checkbox handler
+  document.querySelectorAll(".resolve-checkbox").forEach(cb => {
+    cb.addEventListener("change", async function () {
+      const id       = this.dataset.id;
+      const resolved = this.checked;
+      const row      = this.closest("tr");
+      const span     = this.parentElement.querySelector(".done-label");
+
+      try {
+        const resp = await fetch(`/dashboard/api/replies/${id}/resolve`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ resolved })
+        });
+        const data = await resp.json();
+        if (!data.success) throw new Error("Server error");
+
+        row.dataset.resolved = resolved ? "true" : "false";
+
+        if (resolved) {
+          row.classList.remove("table-warning");
+          row.classList.add("table-success", "opacity-75", "resolved-row");
+          if (!span) {
+            const s = document.createElement("span");
+            s.className = "done-label text-success small fw-semibold";
+            s.textContent = "Done";
+            this.parentElement.appendChild(s);
+          }
+        } else {
+          row.classList.remove("table-success", "opacity-75", "resolved-row");
+          if (span) span.remove();
+        }
+
+        applyFilters();
+      } catch (e) {
+        this.checked = !resolved;
+        alert("Failed to update. Please try again.");
+      }
+    });
   });
-});
+})();
 </script>
 {% endblock %}
