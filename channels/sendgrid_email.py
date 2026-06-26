@@ -28,6 +28,15 @@ from db.templates import render_template
 
 logger = logging.getLogger(__name__)
 
+LOGO_BANNER_HTML = """
+<div style="text-align:center;padding:16px 0 8px;background:#ffffff;">
+  <img src="https://spark-1bc3.tailea79dc.ts.net/dashboard/logo_partner.png"
+       alt="EcoSave Home Solutions"
+       style="max-width:220px;height:auto;display:inline-block;">
+</div>
+<hr style="border:none;border-top:2px solid #2e7d32;margin:0 0 16px;">
+"""
+
 
 def run() -> None:
     """Drain the email_queue: fetch unsent rows, render, and send via SendGrid."""
@@ -62,6 +71,7 @@ def run() -> None:
 
             data = json.loads(row["template_data"])
             body_html = render_template(tmpl_body, data)
+            body_html = body_html.replace("[LOGO_BANNER]", LOGO_BANNER_HTML)
             subject = render_template(
                 row["tmpl_subject"] or "Appointment Reminder", data
             )
