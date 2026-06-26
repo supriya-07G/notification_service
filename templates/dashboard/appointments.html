@@ -195,18 +195,16 @@
                       </button>
                     </form>
                     <!-- Edit -->
-                    <button type="button" class="btn btn-sm btn-outline-secondary py-1 px-2 d-flex align-items-center gap-1"
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-1 px-2 d-flex align-items-center gap-1 btn-edit-appt"
                       title="Edit appointment"
-                      onclick="openEditModal({
-                        id: '{{ appt.id }}',
-                        customer_name: {{ appt.customer_name | tojson }},
-                        customer_phone: {{ appt.customer_phone | tojson }},
-                        customer_email: {{ (appt.customer_email or '') | tojson }},
-                        appointment_type: {{ appt.appointment_type | tojson }},
-                        appointment_at: {{ appt.appointment_at | tojson }},
-                        location: {{ (appt.location or '') | tojson }},
-                        notes: {{ (appt.notes or '') | tojson }}
-                      })">
+                      data-id="{{ appt.id }}"
+                      data-name="{{ appt.customer_name | e }}"
+                      data-phone="{{ appt.customer_phone | e }}"
+                      data-email="{{ (appt.customer_email or '') | e }}"
+                      data-type="{{ appt.appointment_type | e }}"
+                      data-at="{{ appt.appointment_at | e }}"
+                      data-location="{{ (appt.location or '') | e }}"
+                      data-notes="{{ (appt.notes or '') | e }}">
                       <i class="bi bi-pencil"></i>
                     </button>
                     <!-- Delete -->
@@ -372,16 +370,21 @@
 </div>
 
 <script>
-function openEditModal(appt) {
-  document.getElementById('editAppointmentForm').action = '/dashboard/appointments/' + appt.id + '/edit';
-  document.getElementById('edit_customer_name').value = appt.customer_name;
-  document.getElementById('edit_customer_phone').value = appt.customer_phone;
-  document.getElementById('edit_customer_email').value = appt.customer_email || '';
-  document.getElementById('edit_appointment_type').value = appt.appointment_type;
-  document.getElementById('edit_appointment_at').value = appt.appointment_at ? appt.appointment_at.replace(' ', 'T').slice(0, 16) : '';
-  document.getElementById('edit_location').value = appt.location || '';
-  document.getElementById('edit_notes').value = appt.notes || '';
-  new bootstrap.Modal(document.getElementById('editAppointmentModal')).show();
-}
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.btn-edit-appt').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var d = btn.dataset;
+      document.getElementById('editAppointmentForm').action = '/dashboard/appointments/' + d.id + '/edit';
+      document.getElementById('edit_customer_name').value = d.name;
+      document.getElementById('edit_customer_phone').value = d.phone;
+      document.getElementById('edit_customer_email').value = d.email;
+      document.getElementById('edit_appointment_type').value = d.type;
+      document.getElementById('edit_appointment_at').value = d.at ? d.at.replace(' ', 'T').slice(0, 16) : '';
+      document.getElementById('edit_location').value = d.location;
+      document.getElementById('edit_notes').value = d.notes;
+      new bootstrap.Modal(document.getElementById('editAppointmentModal')).show();
+    });
+  });
+});
 </script>
 {% endblock %}
