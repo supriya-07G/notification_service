@@ -974,8 +974,8 @@ async def delete_appointment(request: Request, id: str, csrf_token: str = Form(.
         if not row:
             return RedirectResponse(url="/dashboard/appointments?error=Appointment+not+found", status_code=303)
 
-        conn.execute("DELETE FROM appointments WHERE id = ?", [id])
         conn.execute("DELETE FROM notification_attempts WHERE appointment_id = ?", [id])
+        conn.execute("DELETE FROM appointments WHERE id = ?", [id])
         try:
             conn.execute(
                 """INSERT INTO audit_log (action, source, entity_id, details)
