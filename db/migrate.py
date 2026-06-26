@@ -12,6 +12,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from db.init import get_connection
 
 
+def _add_column_if_missing(conn, table: str, column: str, definition: str):
+    cols = [row[1] for row in conn.execute(f"PRAGMA table_info({table})").fetchall()]
+    if column not in cols:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+        print(f"  Added column {table}.{column}")
+
+
 def run_migration():
     schema_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "schema.sql")
 
@@ -21,6 +28,13 @@ def run_migration():
     conn = get_connection()
     try:
         conn.executescript(schema_sql)
+
+        # Additive column migrations (ALTER TABLE for existing DBs)
+        _add_column_if_missing(conn, "inbound_messages", "resolved",    "BOOLEAN DEFAULT FALSE")
+        _add_column_if_missing(conn, "inbound_messages", "resolved_at", "TIMESTAMP")
+        _add_column_if_missing(conn, "inbound_messages", "resolved_by", "TEXT")
+        conn.commit()
+
         print("Migration complete.")
     except Exception as e:
         print(f"Migration failed: {e}", file=sys.stderr)

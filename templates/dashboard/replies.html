@@ -20,16 +20,17 @@
           <thead>
             <tr>
               <th style="width: 5%;">Status</th>
-              <th style="width: 15%;">From</th>
-              <th style="width: 10%;">Channel</th>
-              <th style="width: 40%;">Message Body</th>
-              <th style="width: 15%;">Received</th>
-              <th style="width: 15%;">Classification</th>
+              <th style="width: 14%;">From</th>
+              <th style="width: 8%;">Channel</th>
+              <th style="width: 36%;">Message Body</th>
+              <th style="width: 13%;">Received</th>
+              <th style="width: 12%;">Classification</th>
+              <th style="width: 12%;">Resolved</th>
             </tr>
           </thead>
           <tbody>
             {% for reply in replies %}
-              <tr class="{% if not reply.processed %}table-warning{% endif %}">
+              <tr class="{% if reply.resolved %}table-success opacity-75{% elif not reply.processed %}table-warning{% endif %}">
                 <!-- Status icon / processed -->
                 <td>
                   {% if reply.processed %}
@@ -38,33 +39,32 @@
                     <span class="text-warning fs-5" title="Unprocessed (Action Needed)"><i class="bi bi-exclamation-circle-fill"></i></span>
                   {% endif %}
                 </td>
-                
+
                 <!-- From Number -->
                 <td class="font-weight-medium text-dark">{{ reply.from_address }}</td>
-                
+
                 <!-- Channel -->
                 <td>
                   <span class="badge bg-secondary text-uppercase">{{ reply.channel }}</span>
                 </td>
-                
+
                 <!-- Message Body -->
                 <td>
                   <div class="text-dark font-weight-medium">{{ reply.body or '(Empty Message)' }}</div>
-                  
                   {% if reply.escalated %}
                     <div class="mt-1">
                       <span class="badge bg-danger small"><i class="bi bi-megaphone-fill me-1"></i> Escalated to {{ reply.escalated_to or 'Discord' }}</span>
                     </div>
                   {% endif %}
                 </td>
-                
+
                 <!-- Received At -->
                 <td class="small">{{ reply.received_at }}</td>
-                
+
                 <!-- Classification -->
                 <td>
                   {% if reply.classification %}
-                    <span class="badge 
+                    <span class="badge
                       {% if reply.classification == 'confirm' %}bg-success
                       {% elif reply.classification == 'stop' %}bg-danger
                       {% elif reply.classification == 'reschedule_request' %}bg-info text-dark
@@ -72,8 +72,21 @@
                       {{ reply.classification }}
                     </span>
                   {% else %}
-                    <span class="text-muted small">None</span>
+                    <span class="text-muted small">—</span>
                   {% endif %}
+                </td>
+
+                <!-- Resolved checkbox -->
+                <td>
+                  <div class="form-check d-flex align-items-center gap-2">
+                    <input class="form-check-input resolve-checkbox" type="checkbox"
+                           data-id="{{ reply.id }}"
+                           {% if reply.resolved %}checked{% endif %}
+                           title="{% if reply.resolved %}Resolved by {{ reply.resolved_by }} at {{ reply.resolved_at }}{% else %}Mark as resolved{% endif %}">
+                    {% if reply.resolved %}
+                      <span class="text-success small fw-semibold">Done</span>
+                    {% endif %}
+                  </div>
                 </td>
               </tr>
             {% endfor %}
@@ -88,4 +101,44 @@
     {% endif %}
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll(".resolve-checkbox").forEach(cb => {
+  cb.addEventListener("change", async function () {
+    const id = this.dataset.id;
+    const resolved = this.checked;
+    const row = this.closest("tr");
+    const span = this.parentElement.querySelector("span");
+
+    try {
+      const resp = await fetch(`/dashboard/api/replies/${id}/resolve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resolved })
+      });
+      const data = await resp.json();
+      if (!data.success) throw new Error("Server error");
+
+      if (resolved) {
+        row.classList.remove("table-warning");
+        row.classList.add("table-success", "opacity-75");
+        if (!span) {
+          const s = document.createElement("span");
+          s.className = "text-success small fw-semibold";
+          s.textContent = "Done";
+          this.parentElement.appendChild(s);
+        }
+      } else {
+        row.classList.remove("table-success", "opacity-75");
+        if (span) span.remove();
+      }
+    } catch (e) {
+      this.checked = !resolved;
+      alert("Failed to update. Please try again.");
+    }
+  });
+});
+</script>
 {% endblock %}

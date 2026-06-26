@@ -97,7 +97,10 @@ CREATE TABLE IF NOT EXISTS inbound_messages (
     processed BOOLEAN DEFAULT FALSE,
     processed_at TIMESTAMP,
     escalated BOOLEAN DEFAULT FALSE,
-    escalated_to TEXT                             -- discord | email | null
+    escalated_to TEXT,                            -- discord | email | null
+    resolved BOOLEAN DEFAULT FALSE,
+    resolved_at TIMESTAMP,
+    resolved_by TEXT                              -- username of staff who resolved
 );
 
 -- ----- system_settings -----

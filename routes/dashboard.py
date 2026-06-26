@@ -788,6 +788,37 @@ async def replies(request: Request):
     finally:
         conn.close()
 
+@router.post("/api/replies/{reply_id}/resolve")
+async def api_resolve_reply(reply_id: int, request: Request):
+    redirect = require_login(request)
+    if redirect:
+        return {"error": "Unauthorized"}
+    user = get_current_user(request)
+    if not user:
+        return {"error": "Unauthorized"}
+
+    data = await request.json()
+    resolved = bool(data.get("resolved", True))
+    username = user.get("username", "unknown")
+
+    conn = get_connection()
+    try:
+        if resolved:
+            conn.execute(
+                "UPDATE inbound_messages SET resolved=TRUE, resolved_at=CURRENT_TIMESTAMP, resolved_by=? WHERE id=?",
+                [username, reply_id],
+            )
+        else:
+            conn.execute(
+                "UPDATE inbound_messages SET resolved=FALSE, resolved_at=NULL, resolved_by=NULL WHERE id=?",
+                [reply_id],
+            )
+        conn.commit()
+        return {"success": True, "resolved": resolved}
+    finally:
+        conn.close()
+
+
 @router.get("/settings", response_class=HTMLResponse)
 async def settings_page(request: Request, saved: bool = False, password_success: bool = False, password_errors: str = ""):
     redirect = require_login(request)
