@@ -881,8 +881,9 @@ async def toggle_no_reminder(request: Request, id: str, csrf_token: str = Form(.
     if not validate_csrf_token(csrf_token):
         return RedirectResponse(url="/dashboard/appointments?error=Invalid+CSRF+token", status_code=303)
 
-    conn = get_connection()
+    conn = None
     try:
+        conn = get_connection()
         current = conn.execute(
             "SELECT no_reminder FROM appointments WHERE id = ?", [id]
         ).fetchone()
@@ -898,7 +899,8 @@ async def toggle_no_reminder(request: Request, id: str, csrf_token: str = Form(.
         logger.error("Error toggling no_reminder for id=%s: %s", id, e)
         return RedirectResponse(url="/dashboard/appointments?error=Failed+to+update+reminder+status", status_code=303)
     finally:
-        conn.close()
+        if conn:
+            conn.close()
     referer = request.headers.get("referer", "/dashboard/appointments")
     return RedirectResponse(url=referer, status_code=303)
 
@@ -912,8 +914,9 @@ async def delete_appointment(request: Request, id: str, csrf_token: str = Form(.
         return RedirectResponse(url="/dashboard/appointments?error=Invalid+CSRF+token", status_code=303)
 
     user = get_current_user(request)
-    conn = get_connection()
+    conn = None
     try:
+        conn = get_connection()
         row = conn.execute(
             "SELECT customer_name, customer_phone, appointment_at FROM appointments WHERE id = ?",
             [id]
@@ -939,15 +942,15 @@ async def delete_appointment(request: Request, id: str, csrf_token: str = Form(.
                 ]
             )
         except Exception as audit_err:
-            logger.warning("audit_log insert failed (table may not exist): %s", audit_err)
+            logger.warning("audit_log insert failed: %s", audit_err)
         conn.commit()
     except Exception as e:
         logger.error("Error deleting appointment id=%s: %s", id, e)
         return RedirectResponse(url="/dashboard/appointments?error=Failed+to+delete+appointment", status_code=303)
     finally:
-        conn.close()
+        if conn:
+            conn.close()
 
-    # Preserve current query params so we return to the same filtered view
     referer = request.headers.get("referer", "/dashboard/appointments")
     return RedirectResponse(url=referer, status_code=303)
 
