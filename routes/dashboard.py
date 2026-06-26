@@ -883,16 +883,24 @@ async def toggle_no_reminder(request: Request, id: str, csrf_token: str = Form(.
 
     conn = get_connection()
     try:
+        current = conn.execute(
+            "SELECT no_reminder FROM appointments WHERE id = ?", [id]
+        ).fetchone()
+        if not current:
+            return RedirectResponse(url="/dashboard/appointments?error=Appointment+not+found", status_code=303)
+        new_val = 0 if current["no_reminder"] else 1
         conn.execute(
-            """UPDATE appointments
-               SET no_reminder = NOT no_reminder, updated_at = CURRENT_TIMESTAMP
-               WHERE id = ?""",
-            [id]
+            "UPDATE appointments SET no_reminder = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            [new_val, id]
         )
         conn.commit()
+    except Exception as e:
+        logger.error("Error toggling no_reminder for id=%s: %s", id, e)
+        return RedirectResponse(url="/dashboard/appointments?error=Failed+to+update+reminder+status", status_code=303)
     finally:
         conn.close()
-    return RedirectResponse(url="/dashboard/appointments", status_code=303)
+    referer = request.headers.get("referer", "/dashboard/appointments")
+    return RedirectResponse(url=referer, status_code=303)
 
 
 @router.post("/appointments/{id}/delete")
