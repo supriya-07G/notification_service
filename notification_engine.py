@@ -156,7 +156,7 @@ def run() -> dict:
                     "location": appt["location"] or "",
                     "calendar_source": appt["calendar_source"],
                 }
-                body = render_template(tmpl["body"], template_data)
+                body = render_template(tmpl["body"], template_data, html_escape_values=(channel == "email"))
 
                 if channel == "sms":
                     # ── RULE 5: opt-out check ───────────────────────────
