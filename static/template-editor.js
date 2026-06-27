@@ -14,6 +14,12 @@ let currentTemplateId = null;
 let currentChannel = 'sms';
 let currentRawBody = '';
 
+function _csrfHeaders() {
+    const el = document.querySelector('input[name="csrf_token"]');
+    const token = el ? el.value : '';
+    return {'Content-Type': 'application/json', 'X-CSRF-Token': token};
+}
+
 // ── Edit Template ────────────────────────────────────────────────────────────
 
 function openTemplateEditor(templateId) {
@@ -173,7 +179,7 @@ function translateTemplate() {
     const btn = document.getElementById('btn-translate');
     btn.innerHTML = 'Translating...'; btn.disabled = true;
     fetch(`/dashboard/api/templates/${currentTemplateId}/translate`, {
-        method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ body })
+        method: 'POST', headers: _csrfHeaders(), body: JSON.stringify({ body })
     }).then(r => r.json()).then(data => {
         if (data.translated_body) {
             if (currentChannel === 'email') {
@@ -189,7 +195,7 @@ function translateTemplate() {
 function revertTemplate() {
     if (!currentTemplateId) return;
     if (!confirm('Revert to system default? Changes will be lost until you save.')) return;
-    fetch(`/dashboard/api/templates/${currentTemplateId}/revert`, { method: 'POST', headers: {'Content-Type':'application/json'} })
+    fetch(`/dashboard/api/templates/${currentTemplateId}/revert`, { method: 'POST', headers: _csrfHeaders() })
         .then(r => r.json())
         .then(data => {
             if (data.default_body) {
@@ -213,7 +219,7 @@ function saveTemplate() {
     const btn = document.getElementById('btn-save');
     btn.innerHTML = 'Saving...'; btn.disabled = true;
     fetch(`/dashboard/api/templates/${currentTemplateId}`, {
-        method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ body: bodyHtml, subject })
+        method: 'POST', headers: _csrfHeaders(), body: JSON.stringify({ body: bodyHtml, subject })
     }).then(r => r.json()).then(data => {
         if (data.success) { alert('Template saved successfully!'); window.location.reload(); }
         else { alert('Failed to save: ' + data.error); btn.innerHTML = 'Save Template'; btn.disabled = false; }
@@ -227,7 +233,7 @@ function sendTest() {
     const btn = document.getElementById('btn-test-send');
     btn.innerHTML = 'Sending...'; btn.disabled = true;
     fetch(`/dashboard/api/templates/${currentTemplateId}/test-send`, {
-        method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ to: recipient })
+        method: 'POST', headers: _csrfHeaders(), body: JSON.stringify({ to: recipient })
     }).then(r => r.json()).then(data => {
         if (data.success) alert(data.message);
         else alert('Test send failed: ' + data.error);
