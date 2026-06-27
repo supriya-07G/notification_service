@@ -17,5 +17,7 @@ _run_staff_migration.py
 run_alert_migration.py
 get_fields.py
 storage.sqlite
+project-documentation.html
+GOOGLE_SSO_SETUP.md
 *.sqlite
 *.log
