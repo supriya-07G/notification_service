@@ -1,0 +1,1093 @@
+
+<title>EcoSave Notification Service — Developer Documentation</title>
+<style>
+  /* ── Tokens ── */
+  :root {
+    --bg:        #0D1117;
+    --surface:   #161B22;
+    --raised:    #1C2330;
+    --border:    #263041;
+    --accent:    #2DD4A7;
+    --accent-dim:#1A7A62;
+    --tx-1:      #CDD9E5;
+    --tx-2:      #8B9AAB;
+    --tx-3:      #556270;
+    --green:     #3FB950;
+    --yellow:    #D29922;
+    --red:       #F85149;
+    --blue:      #58A6FF;
+    --purple:    #BC8CFF;
+    --sidebar-w: 240px;
+    --font-mono: 'Cascadia Code','Fira Code','JetBrains Mono',ui-monospace,monospace;
+    --font-body: -apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--tx-1);
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.7;
+    display: flex;
+    min-height: 100vh;
+  }
+
+  /* ── Sidebar ── */
+  nav#sidebar {
+    width: var(--sidebar-w);
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 24px 0 40px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .nav-brand {
+    padding: 0 20px 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+  .nav-brand .logo-mark {
+    display: inline-block;
+    width: 28px; height: 28px;
+    background: var(--accent);
+    border-radius: 6px;
+    margin-bottom: 8px;
+  }
+  .nav-brand .logo-mark::after {
+    content: '';
+    display: block;
+    width: 12px; height: 12px;
+    background: var(--bg);
+    border-radius: 2px;
+    margin: 8px auto;
+  }
+  .nav-brand h2 {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--tx-2);
+  }
+
+  .nav-section {
+    padding: 4px 12px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--tx-3);
+    margin-top: 16px;
+    margin-bottom: 2px;
+  }
+
+  nav#sidebar a {
+    display: block;
+    padding: 5px 20px;
+    font-size: 13px;
+    color: var(--tx-2);
+    text-decoration: none;
+    border-left: 2px solid transparent;
+    transition: color .15s, border-color .15s, background .15s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  nav#sidebar a:hover { color: var(--tx-1); background: var(--raised); }
+  nav#sidebar a.active { color: var(--accent); border-left-color: var(--accent); background: rgba(45,212,167,.06); }
+
+  /* ── Main ── */
+  main {
+    flex: 1;
+    min-width: 0;
+    max-width: 860px;
+    padding: 48px 48px 80px;
+  }
+
+  /* ── Sections ── */
+  .doc-section {
+    padding-top: 56px;
+    border-top: 1px solid var(--border);
+    margin-top: 56px;
+  }
+  .doc-section:first-child { border-top: none; margin-top: 0; padding-top: 0; }
+
+  /* ── Typography ── */
+  .page-eyebrow {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 12px;
+    font-family: var(--font-mono);
+  }
+  h1 {
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1.25;
+    color: var(--tx-1);
+    text-wrap: balance;
+    margin-bottom: 16px;
+  }
+  .page-lead {
+    font-size: 15px;
+    color: var(--tx-2);
+    max-width: 600px;
+    line-height: 1.75;
+    margin-bottom: 32px;
+  }
+  h2 {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--tx-1);
+    margin-bottom: 16px;
+    text-wrap: balance;
+  }
+  h3 {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent);
+    font-family: var(--font-mono);
+    letter-spacing: .03em;
+    margin: 28px 0 10px;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: .1em;
+  }
+  p { color: var(--tx-2); margin-bottom: 12px; max-width: 680px; }
+  p strong { color: var(--tx-1); font-weight: 600; }
+
+  /* ── KPI Bar ── */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 40px;
+  }
+  .kpi {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .kpi-label { font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--tx-3); margin-bottom: 6px; font-family: var(--font-mono); }
+  .kpi-value { font-size: 22px; font-weight: 700; color: var(--tx-1); font-variant-numeric: tabular-nums; line-height: 1; }
+  .kpi-value.green { color: var(--green); }
+  .kpi-value.yellow { color: var(--yellow); }
+  .kpi-value.blue { color: var(--blue); }
+
+  /* ── Flow Diagram ── */
+  .flow {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex-wrap: wrap;
+    margin: 20px 0 32px;
+  }
+  .flow-step {
+    background: var(--raised);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-size: 12px;
+    font-family: var(--font-mono);
+    color: var(--tx-1);
+    white-space: nowrap;
+  }
+  .flow-step.accent { border-color: var(--accent-dim); color: var(--accent); background: rgba(45,212,167,.07); }
+  .flow-arrow {
+    width: 28px;
+    flex-shrink: 0;
+    text-align: center;
+    color: var(--tx-3);
+    font-size: 13px;
+  }
+
+  /* ── Tables ── */
+  .table-wrap { overflow-x: auto; margin: 16px 0 28px; border: 1px solid var(--border); border-radius: 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    background: var(--raised);
+    color: var(--tx-2);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    font-family: var(--font-mono);
+    padding: 10px 14px;
+    text-align: left;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--border);
+  }
+  tbody tr { border-bottom: 1px solid var(--border); }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: rgba(255,255,255,.025); }
+  td { padding: 9px 14px; vertical-align: top; color: var(--tx-2); }
+  td:first-child { color: var(--tx-1); font-family: var(--font-mono); font-size: 12px; white-space: nowrap; }
+  td code { font-family: var(--font-mono); font-size: 11.5px; color: var(--blue); background: rgba(88,166,255,.08); padding: 1px 5px; border-radius: 3px; }
+  .td-note { font-size: 11.5px; color: var(--tx-3); }
+
+  /* ── Code blocks ── */
+  pre {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+    overflow-x: auto;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    line-height: 1.7;
+    color: var(--tx-1);
+    margin: 16px 0 28px;
+  }
+  code.inline {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--accent);
+    background: rgba(45,212,167,.08);
+    padding: 1px 6px;
+    border-radius: 3px;
+  }
+  .comment { color: var(--tx-3); }
+  .string  { color: var(--green); }
+  .key     { color: var(--blue); }
+  .val     { color: var(--yellow); }
+
+  /* ── Route cards ── */
+  .route-list { display: flex; flex-direction: column; gap: 8px; margin: 16px 0 28px; }
+  .route {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 12px 14px;
+  }
+  .method {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .06em;
+    padding: 3px 7px;
+    border-radius: 4px;
+    white-space: nowrap;
+    margin-top: 1px;
+  }
+  .method.get  { background: rgba(45,212,167,.15); color: var(--accent); }
+  .method.post { background: rgba(88,166,255,.15); color: var(--blue); }
+  .route-path  { font-family: var(--font-mono); font-size: 12.5px; color: var(--tx-1); }
+  .route-desc  { font-size: 12.5px; color: var(--tx-2); margin-top: 3px; }
+
+  /* ── Cron cards ── */
+  .cron-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0 28px; }
+  .cron-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .cron-schedule {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--accent);
+    background: rgba(45,212,167,.07);
+    border: 1px solid var(--accent-dim);
+    border-radius: 4px;
+    padding: 3px 8px;
+    display: inline-block;
+    margin-bottom: 8px;
+  }
+  .cron-name { font-size: 13px; font-weight: 700; color: var(--tx-1); margin-bottom: 4px; }
+  .cron-file { font-family: var(--font-mono); font-size: 11px; color: var(--tx-3); margin-bottom: 8px; }
+  .cron-desc { font-size: 12.5px; color: var(--tx-2); line-height: 1.6; }
+
+  /* ── Pill badges ── */
+  .pill {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .05em;
+    padding: 2px 7px;
+    border-radius: 999px;
+    margin: 2px 2px 2px 0;
+  }
+  .pill-green  { background: rgba(63,185,80,.15);  color: var(--green); }
+  .pill-yellow { background: rgba(210,153,34,.15); color: var(--yellow); }
+  .pill-red    { background: rgba(248,81,73,.15);  color: var(--red); }
+  .pill-blue   { background: rgba(88,166,255,.15); color: var(--blue); }
+  .pill-purple { background: rgba(188,140,255,.15); color: var(--purple); }
+  .pill-dim    { background: rgba(255,255,255,.06); color: var(--tx-2); }
+
+  /* ── Alert boxes ── */
+  .callout {
+    border-left: 3px solid;
+    padding: 12px 16px;
+    border-radius: 0 6px 6px 0;
+    margin: 16px 0 24px;
+    font-size: 13px;
+  }
+  .callout.warn  { border-color: var(--yellow); background: rgba(210,153,34,.07); color: var(--tx-2); }
+  .callout.info  { border-color: var(--blue);   background: rgba(88,166,255,.07); color: var(--tx-2); }
+  .callout strong { color: var(--tx-1); }
+
+  /* ── Schema fields ── */
+  .schema-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 12px 0 24px;
+  }
+  .schema-header {
+    padding: 10px 14px;
+    background: var(--raised);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .schema-table-name {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .schema-desc { font-size: 12px; color: var(--tx-3); }
+  .schema-row {
+    display: grid;
+    grid-template-columns: 160px 110px 1fr;
+    gap: 8px;
+    padding: 8px 14px;
+    border-bottom: 1px solid rgba(255,255,255,.04);
+    font-size: 12.5px;
+    align-items: baseline;
+  }
+  .schema-row:last-child { border-bottom: none; }
+  .schema-col { font-family: var(--font-mono); color: var(--tx-1); font-size: 12px; }
+  .schema-type { font-family: var(--font-mono); font-size: 11px; color: var(--purple); }
+  .schema-note { color: var(--tx-3); font-size: 12px; }
+  .schema-pk   { color: var(--yellow); }
+  .schema-fk   { color: var(--blue); }
+
+  /* ── File tree ── */
+  .filetree {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.9;
+    overflow-x: auto;
+    margin: 16px 0 28px;
+  }
+  .filetree .dir  { color: var(--blue); }
+  .filetree .file { color: var(--tx-2); }
+  .filetree .note { color: var(--tx-3); }
+  .filetree .imp  { color: var(--accent); }
+
+  /* ── Env var list ── */
+  .env-block { margin: 12px 0 24px; display: flex; flex-direction: column; gap: 2px; }
+  .env-row {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 12px;
+    padding: 7px 14px;
+    border-radius: 5px;
+  }
+  .env-row:nth-child(odd) { background: rgba(255,255,255,.025); }
+  .env-key  { font-family: var(--font-mono); font-size: 12px; color: var(--blue); }
+  .env-desc { font-size: 12.5px; color: var(--tx-2); }
+  .env-req  { color: var(--red); font-size: 10px; font-weight: 700; letter-spacing: .05em; }
+  .env-opt  { color: var(--tx-3); font-size: 10px; }
+
+  /* ── Rule list ── */
+  .rules { display: flex; flex-direction: column; gap: 8px; margin: 12px 0 24px; }
+  .rule-item {
+    display: grid;
+    grid-template-columns: 28px 1fr;
+    gap: 12px;
+    align-items: start;
+    padding: 10px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+  .rule-num {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--accent);
+    padding-top: 2px;
+  }
+  .rule-body strong { color: var(--tx-1); display: block; font-size: 13px; margin-bottom: 2px; }
+  .rule-body span { font-size: 12.5px; color: var(--tx-2); }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ── Active nav highlight via JS ── */
+  @media (max-width: 900px) {
+    nav#sidebar { display: none; }
+    main { padding: 32px 24px 64px; }
+  }
+</style>
+
+<!-- Download button -->
+<button onclick="downloadDoc()" style="position:fixed;bottom:24px;right:24px;z-index:9999;background:#2DD4A7;color:#0D1117;border:none;font-size:12px;font-weight:800;letter-spacing:.06em;padding:10px 18px;border-radius:8px;cursor:pointer;box-shadow:0 4px 16px rgba(45,212,167,.35);">↓ DOWNLOAD HTML</button>
+
+<!-- Sidebar -->
+<nav id="sidebar">
+  <div class="nav-brand">
+    <div class="logo-mark"></div>
+    <h2>EcoSave NS</h2>
+  </div>
+
+  <div class="nav-section">Overview</div>
+  <a href="#overview">Project Overview</a>
+  <a href="#tech-stack">Tech Stack</a>
+
+  <div class="nav-section">Structure</div>
+  <a href="#file-structure">File Structure</a>
+  <a href="#database">Database Schema</a>
+
+  <div class="nav-section">Core Logic</div>
+  <a href="#notification-flow">Notification Flow</a>
+  <a href="#template-matching">Template Matching</a>
+  <a href="#workers">Workers & Cron</a>
+
+  <div class="nav-section">API</div>
+  <a href="#routes-dashboard">Dashboard Routes</a>
+  <a href="#routes-webhook">Webhook Routes</a>
+
+  <div class="nav-section">Integrations</div>
+  <a href="#auth">Auth & Sessions</a>
+  <a href="#clickup">ClickUp</a>
+  <a href="#discord">Discord & Alerts</a>
+
+  <div class="nav-section">Operations</div>
+  <a href="#config">Configuration</a>
+  <a href="#deployment">Deployment</a>
+  <a href="#rules">Design Rules</a>
+</nav>
+
+<!-- Main content -->
+<main>
+
+  <!-- ── OVERVIEW ── -->
+  <div class="doc-section" id="overview">
+    <div class="page-eyebrow">EcoSave Home Solutions</div>
+    <h1>Notification Service<br>Developer Documentation</h1>
+    <p class="page-lead">A FastAPI-based appointment reminder system that syncs from Google Calendar and ClickUp, sends SMS/email notifications at 72h / 24h / 2h windows, processes customer replies, and surfaces everything through a staff dashboard.</p>
+
+    <div class="kpi-row">
+      <div class="kpi">
+        <div class="kpi-label">Channels</div>
+        <div class="kpi-value">2</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Reminder Rules</div>
+        <div class="kpi-value green">3</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">DB Tables</div>
+        <div class="kpi-value blue">11</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Cron Jobs</div>
+        <div class="kpi-value yellow">4</div>
+      </div>
+    </div>
+
+    <h3>End-to-End Flow</h3>
+    <div class="flow">
+      <div class="flow-step">Google Calendar / ClickUp</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step accent">calendar_sync.py</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">appointments</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step accent">notification_engine.py</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">Twilio SMS / email_queue</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step accent">sendgrid_email.py</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">Customer</div>
+    </div>
+
+    <div class="flow">
+      <div class="flow-step">Customer replies SMS</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step accent">sms_inbound webhook</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">inbound_messages</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step accent">reply_processor.py</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">Discord / Staff SMS / Staff Email</div>
+    </div>
+  </div>
+
+  <!-- ── TECH STACK ── -->
+  <div class="doc-section" id="tech-stack">
+    <h2>Tech Stack</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Layer</th><th>Technology</th><th>Version</th></tr></thead>
+        <tbody>
+          <tr><td>Language</td><td>Python</td><td class="td-note">3.11+</td></tr>
+          <tr><td>Web Framework</td><td>FastAPI</td><td class="td-note">0.111.0</td></tr>
+          <tr><td>ASGI Server</td><td>Uvicorn</td><td class="td-note">0.29.0</td></tr>
+          <tr><td>Database</td><td>SQLite 3 (WAL mode)</td><td class="td-note">file: storage.sqlite</td></tr>
+          <tr><td>Templates</td><td>Jinja2</td><td class="td-note">3.1.4</td></tr>
+          <tr><td>Frontend</td><td>Bootstrap 5 + custom CSS</td><td class="td-note">CDN</td></tr>
+          <tr><td>SMS</td><td>Twilio REST API</td><td class="td-note">9.1.1</td></tr>
+          <tr><td>Email</td><td>SendGrid REST API</td><td class="td-note">6.11.0</td></tr>
+          <tr><td>Calendar</td><td>Google Calendar API</td><td class="td-note">service account</td></tr>
+          <tr><td>HTTP Client</td><td>httpx</td><td class="td-note">0.27.0</td></tr>
+          <tr><td>Auth</td><td>itsdangerous + bcrypt/passlib</td><td class="td-note">2.2.0 / 1.7.4</td></tr>
+          <tr><td>Phone Validation</td><td>phonenumbers</td><td class="td-note">8.13.35</td></tr>
+          <tr><td>Tests</td><td>pytest + pytest-asyncio</td><td class="td-note">8.2.0 / 0.23.6</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── FILE STRUCTURE ── -->
+  <div class="doc-section" id="file-structure">
+    <h2>File Structure</h2>
+    <div class="filetree">
+<span class="imp">notification_service/</span>
+├── <span class="imp">webhook_server.py</span>       <span class="note"># FastAPI app entry point, runs on startup migration</span>
+├── <span class="imp">notification_engine.py</span>  <span class="note"># Core: evaluates rules, queues SMS/email</span>
+├── <span class="file">calendar_sync.py</span>        <span class="note"># Google Calendar → appointments table</span>
+├── <span class="file">config.py</span>               <span class="note"># Loads .env → typed config constants</span>
+│
+├── <span class="dir">auth/</span>
+│   ├── <span class="file">session.py</span>          <span class="note"># Cookie sessions, rate limiting</span>
+│   └── <span class="file">csrf.py</span>             <span class="note"># CSRF double-submit tokens</span>
+│
+├── <span class="dir">db/</span>
+│   ├── <span class="imp">schema.sql</span>          <span class="note"># All CREATE TABLE + seed data (idempotent)</span>
+│   ├── <span class="imp">migrate.py</span>          <span class="note"># Run schema + ALTER TABLE for new columns</span>
+│   ├── <span class="file">init.py</span>             <span class="note"># get_connection() with WAL, FK, row_factory</span>
+│   ├── <span class="file">templates.py</span>        <span class="note"># Template lookup with fallback chain + render</span>
+│   ├── <span class="file">settings.py</span>         <span class="note"># Settings CRUD (system_settings table)</span>
+│   └── <span class="file">admin_users.py</span>      <span class="note"># Staff accounts, bcrypt password management</span>
+│
+├── <span class="dir">channels/</span>
+│   ├── <span class="file">twilio_sms.py</span>       <span class="note"># SMS send via Twilio (synchronous)</span>
+│   └── <span class="imp">sendgrid_email.py</span>   <span class="note"># Email queue drainer (cron worker)</span>
+│
+├── <span class="dir">routes/</span>
+│   ├── <span class="imp">dashboard.py</span>        <span class="note"># All staff UI routes + API endpoints (~1700 lines)</span>
+│   ├── <span class="file">sms_inbound.py</span>      <span class="note"># POST /webhooks/twilio/sms</span>
+│   ├── <span class="file">status_callback.py</span>  <span class="note"># POST /webhooks/twilio/status</span>
+│   ├── <span class="file">sendgrid_status.py</span>  <span class="note"># POST /webhooks/sendgrid/status</span>
+│   └── <span class="file">clickup_webhook.py</span>  <span class="note"># POST /webhooks/clickup</span>
+│
+├── <span class="dir">adapters/</span>
+│   └── <span class="file">clickup_webhook.py</span>  <span class="note"># ClickUp task field extraction + scope labels</span>
+│
+├── <span class="dir">workers/</span>
+│   └── <span class="imp">reply_processor.py</span>  <span class="note"># Classify inbound SMS, send staff alerts</span>
+│
+├── <span class="dir">templates/dashboard/</span>  <span class="note"># Jinja2 HTML templates</span>
+├── <span class="dir">static/</span>               <span class="note"># logo_clean.png, custom.css, template-editor.js</span>
+├── <span class="dir">tests/</span>                <span class="note"># pytest test suite (10 test files)</span>
+└── <span class="dir">deployment/</span>           <span class="note"># nginx.conf, systemd unit, cron entries</span>
+    </div>
+  </div>
+
+  <!-- ── DATABASE ── -->
+  <div class="doc-section" id="database">
+    <h2>Database Schema</h2>
+    <p>Initialize with <code class="inline">python db/migrate.py</code>. All <code class="inline">CREATE TABLE</code> statements use <code class="inline">IF NOT EXISTS</code>; new column migrations use <code class="inline">ALTER TABLE</code> guards.</p>
+
+    <div class="schema-block">
+      <div class="schema-header">
+        <div class="schema-table-name">appointments</div>
+        <div class="schema-desc">Canonical appointment records from Google Calendar or ClickUp</div>
+      </div>
+      <div class="schema-row"><span class="schema-col schema-pk">id</span><span class="schema-type">TEXT PK</span><span class="schema-note">Google Calendar event ID or ClickUp task ID</span></div>
+      <div class="schema-row"><span class="schema-col">calendar_source</span><span class="schema-type">TEXT</span><span class="schema-note">hvac | solar | inspections | other</span></div>
+      <div class="schema-row"><span class="schema-col">customer_name</span><span class="schema-type">TEXT</span><span class="schema-note">Extracted from event title</span></div>
+      <div class="schema-row"><span class="schema-col">customer_phone</span><span class="schema-type">TEXT</span><span class="schema-note">E.164 format (+1...)</span></div>
+      <div class="schema-row"><span class="schema-col">customer_email</span><span class="schema-type">TEXT</span><span class="schema-note"></span></div>
+      <div class="schema-row"><span class="schema-col">appointment_at</span><span class="schema-type">TIMESTAMP</span><span class="schema-note">UTC ISO string</span></div>
+      <div class="schema-row"><span class="schema-col">appointment_type</span><span class="schema-type">TEXT</span><span class="schema-note">estimate | install | service | inspection | hvac | solar | …</span></div>
+      <div class="schema-row"><span class="schema-col">language</span><span class="schema-type">TEXT</span><span class="schema-note">en | pt | es — from [LANG:XX] tag or manual override</span></div>
+      <div class="schema-row"><span class="schema-col">no_reminder</span><span class="schema-type">BOOLEAN</span><span class="schema-note">TRUE suppresses all notifications for this appointment</span></div>
+    </div>
+
+    <div class="schema-block">
+      <div class="schema-header">
+        <div class="schema-table-name">notification_attempts</div>
+        <div class="schema-desc">Every send attempt — source of truth for delivery logs</div>
+      </div>
+      <div class="schema-row"><span class="schema-col schema-fk">appointment_id</span><span class="schema-type">TEXT FK</span><span class="schema-note">→ appointments(id)</span></div>
+      <div class="schema-row"><span class="schema-col">rule_name</span><span class="schema-type">TEXT</span><span class="schema-note">customer_72h | customer_24h | customer_2h</span></div>
+      <div class="schema-row"><span class="schema-col">channel</span><span class="schema-type">TEXT</span><span class="schema-note">sms | email</span></div>
+      <div class="schema-row"><span class="schema-col">provider_sid</span><span class="schema-type">TEXT</span><span class="schema-note">Twilio MessageSid or SendGrid message ID</span></div>
+      <div class="schema-row"><span class="schema-col">status</span><span class="schema-type">TEXT</span><span class="schema-note">pending → queued → sent | delivered | failed | undelivered | skipped_optout</span></div>
+      <div class="schema-row"><span class="schema-col">error_code</span><span class="schema-type">TEXT</span><span class="schema-note">Twilio/SendGrid error code on failure</span></div>
+      <div class="schema-row"><span class="schema-col schema-note">UNIQUE</span><span class="schema-type"></span><span class="schema-note">(appointment_id, rule_name, channel, appointment_at) — prevents duplicate sends</span></div>
+    </div>
+
+    <div class="schema-block">
+      <div class="schema-header">
+        <div class="schema-table-name">inbound_messages</div>
+        <div class="schema-desc">All inbound SMS from customers</div>
+      </div>
+      <div class="schema-row"><span class="schema-col">from_address</span><span class="schema-type">TEXT</span><span class="schema-note">Customer phone (E.164)</span></div>
+      <div class="schema-row"><span class="schema-col">body</span><span class="schema-type">TEXT</span><span class="schema-note">Raw message text</span></div>
+      <div class="schema-row"><span class="schema-col">classification</span><span class="schema-type">TEXT</span><span class="schema-note">stop | start | confirm | reschedule_request | question | unknown</span></div>
+      <div class="schema-row"><span class="schema-col">processed</span><span class="schema-type">BOOLEAN</span><span class="schema-note">FALSE until reply_processor.py runs</span></div>
+      <div class="schema-row"><span class="schema-col">escalated</span><span class="schema-type">BOOLEAN</span><span class="schema-note">TRUE if classification is reschedule/question/unknown</span></div>
+      <div class="schema-row"><span class="schema-col">resolved</span><span class="schema-type">BOOLEAN</span><span class="schema-note">Staff marked as handled in dashboard</span></div>
+      <div class="schema-row"><span class="schema-col">resolved_by</span><span class="schema-type">TEXT</span><span class="schema-note">Staff email who resolved</span></div>
+    </div>
+
+    <h3>Other Tables</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Table</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>email_queue</td><td>Pending outbound emails; drained by sendgrid_email.py every 5/35 min. Max 3 attempts.</td></tr>
+          <tr><td>opt_outs</td><td>Customers who replied STOP. PK: (phone, channel). Source: inbound_stop | manual | dashboard.</td></tr>
+          <tr><td>appointment_quarantine</td><td>Records with data issues (missing phone, invalid phone). Staff resolves or dismisses.</td></tr>
+          <tr><td>message_templates</td><td>SMS/email templates per (channel, appointment_type, language, rule_name). Supports {{placeholders}}.</td></tr>
+          <tr><td>system_settings</td><td>Key-value operational flags (kill switch, quiet hours, rule toggles, alert config).</td></tr>
+          <tr><td>admin_users</td><td>Staff logins. bcrypt-hashed passwords. Roles: admin | staff.</td></tr>
+          <tr><td>webhook_events</td><td>ClickUp webhook deduplication. Prevents double-processing on retries.</td></tr>
+          <tr><td>audit_log</td><td>Sensitive actions: CSV exports, staff changes, password resets, appointment edits.</td></tr>
+          <tr><td>customer_preferences</td><td>Per-customer consent and notification toggles (defined but lightly used).</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── NOTIFICATION FLOW ── -->
+  <div class="doc-section" id="notification-flow">
+    <h2>Notification Flow</h2>
+
+    <h3>SMS — Synchronous</h3>
+    <div class="flow">
+      <div class="flow-step">notification_engine</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step accent">opt-out check</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">twilio_sms.send()</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">notification_attempts ← sid</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step accent">status_callback webhook</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">status updated</div>
+    </div>
+
+    <h3>Email — Queue-Based</h3>
+    <div class="flow">
+      <div class="flow-step">notification_engine</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step accent">INSERT email_queue</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">cron: 5,35 * * * *</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step accent">sendgrid_email.py</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">SendGrid API</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step accent">event webhook</div>
+    </div>
+
+    <div class="callout info">
+      <strong>Why queue emails?</strong> Decouples engine from send latency, allows retries (max 3 attempts), and prevents engine stalls on SendGrid outages.
+    </div>
+
+    <h3>Notification Rules</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Rule</th><th>Hours Before</th><th>Channels</th><th>Window</th></tr></thead>
+        <tbody>
+          <tr><td>customer_72h</td><td>72h</td><td><span class="pill pill-blue">SMS</span><span class="pill pill-green">Email</span></td><td class="td-note">±15 min before, +30 min after target</td></tr>
+          <tr><td>customer_24h</td><td>24h</td><td><span class="pill pill-blue">SMS</span><span class="pill pill-green">Email</span></td><td class="td-note">Same timing window</td></tr>
+          <tr><td>customer_2h</td><td>2h</td><td><span class="pill pill-blue">SMS</span></td><td class="td-note">SMS only, no quiet hours exception</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Deduplication</h3>
+    <p>A <code class="inline">UNIQUE</code> constraint on <code class="inline">(appointment_id, rule_name, channel, appointment_at)</code> means the cron can safely run multiple times — the second <code class="inline">INSERT</code> silently fails.</p>
+  </div>
+
+  <!-- ── TEMPLATE MATCHING ── -->
+  <div class="doc-section" id="template-matching">
+    <h2>Template Matching</h2>
+    <p>Template lookup uses a fallback chain — most specific to least specific:</p>
+
+    <div class="flow" style="flex-direction:column;align-items:flex-start;gap:6px;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="flow-step" style="width:320px">channel + <em>specific_type</em> + <em>specific_lang</em> + rule</div>
+        <div class="pill pill-green">Exact match</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="flow-step" style="width:320px">channel + <strong>all</strong> + <em>specific_lang</em> + rule</div>
+        <div class="pill pill-yellow">Type fallback</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="flow-step" style="width:320px">channel + <strong>all</strong> + <strong>en</strong> + rule</div>
+        <div class="pill pill-red">Language fallback</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="flow-step" style="width:320px">No match</div>
+        <div class="pill pill-dim">Log WARNING, skip send</div>
+      </div>
+    </div>
+
+    <h3>Available Placeholders</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Token</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td><code>{{customer_name}}</code></td><td>appointments.customer_name</td></tr>
+          <tr><td><code>{{appointment_type}}</code></td><td>appointments.appointment_type</td></tr>
+          <tr><td><code>{{appointment_date}}</code></td><td>Formatted: "Monday, June 26"</td></tr>
+          <tr><td><code>{{appointment_time}}</code></td><td>Formatted: "2:30 PM" (local TZ)</td></tr>
+          <tr><td><code>{{location}}</code></td><td>appointments.location</td></tr>
+          <tr><td><code>{{calendar_source}}</code></td><td>appointments.calendar_source</td></tr>
+          <tr><td><code>[LOGO_BANNER]</code></td><td>Replaced with HTML banner (logo_clean.png + green divider)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout warn"><strong>Note:</strong> If any <code class="inline">{{placeholder}}</code> remains unreplaced after rendering, <code class="inline">render_template()</code> raises ValueError. Guard your templates.</div>
+  </div>
+
+  <!-- ── WORKERS ── -->
+  <div class="doc-section" id="workers">
+    <h2>Workers &amp; Cron Jobs</h2>
+    <div class="cron-grid">
+      <div class="cron-card">
+        <div class="cron-schedule">*/15 * * * *</div>
+        <div class="cron-name">Calendar Sync</div>
+        <div class="cron-file">calendar_sync.py</div>
+        <div class="cron-desc">Fetches events from Google Calendar (service account), extracts customer name/phone/language, upserts into appointments table. Quarantines records with missing/invalid data.</div>
+      </div>
+      <div class="cron-card">
+        <div class="cron-schedule">*/30 * * * *</div>
+        <div class="cron-name">Notification Engine</div>
+        <div class="cron-file">notification_engine.py</div>
+        <div class="cron-desc">Evaluates all upcoming appointments against notification rules. Checks kill switch, quiet hours, opt-outs, dedup. Sends SMS synchronously; queues emails to email_queue.</div>
+      </div>
+      <div class="cron-card">
+        <div class="cron-schedule">5,35 * * * *</div>
+        <div class="cron-name">Email Worker</div>
+        <div class="cron-file">channels/sendgrid_email.py</div>
+        <div class="cron-desc">Drains email_queue (sent_at IS NULL, attempts &lt; 3). Renders template + replaces [LOGO_BANNER]. Sends via SendGrid. Max 3 retries per row.</div>
+      </div>
+      <div class="cron-card">
+        <div class="cron-schedule">*/5 * * * *</div>
+        <div class="cron-name">Reply Processor</div>
+        <div class="cron-file">workers/reply_processor.py</div>
+        <div class="cron-desc">Classifies unprocessed inbound SMS. Escalates reschedule/question/unknown replies to Discord, staff SMS, and staff email. Marks rows as processed.</div>
+      </div>
+    </div>
+
+    <h3>Reply Classification Keywords</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Class</th><th>Triggers</th><th>Escalated?</th></tr></thead>
+        <tbody>
+          <tr><td>stop</td><td>STOP, STOPALL, UNSUBSCRIBE, CANCEL, END</td><td><span class="pill pill-dim">No</span></td></tr>
+          <tr><td>start</td><td>START, UNSTOP, SUBSCRIBE</td><td><span class="pill pill-dim">No</span></td></tr>
+          <tr><td>confirm</td><td>YES, Y, YEP, OK, OKAY, CONFIRM, CONFIRMED, 1, SURE</td><td><span class="pill pill-dim">No</span></td></tr>
+          <tr><td>reschedule_request</td><td>reschedule, change, move, postpone, different day…</td><td><span class="pill pill-red">Yes</span></td></tr>
+          <tr><td>question</td><td>Contains ?, when, where, what, how, who, can i…</td><td><span class="pill pill-red">Yes</span></td></tr>
+          <tr><td>unknown</td><td>Anything else</td><td><span class="pill pill-red">Yes</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── ROUTES DASHBOARD ── -->
+  <div class="doc-section" id="routes-dashboard">
+    <h2>Dashboard Routes</h2>
+    <p>All routes under <code class="inline">/dashboard/</code>. Authenticated via session cookie. Admin-only routes check <code class="inline">role == 'admin'</code>.</p>
+
+    <h3>Pages</h3>
+    <div class="route-list">
+      <div class="route"><span class="method get">GET</span><div><div class="route-path">/dashboard/</div><div class="route-desc">Home — KPI stats, recent failures, kill-switch toggle</div></div></div>
+      <div class="route"><span class="method get">GET</span><div><div class="route-path">/dashboard/appointments</div><div class="route-desc">Appointment list with filters (search, date, source, status). Shows notification attempts inline.</div></div></div>
+      <div class="route"><span class="method get">GET</span><div><div class="route-path">/dashboard/deliveries</div><div class="route-desc">Paginated delivery log (50/page). Filterable by status, channel, date range. CSV export (admin).</div></div></div>
+      <div class="route"><span class="method get">GET</span><div><div class="route-path">/dashboard/quarantine</div><div class="route-desc">Data quality issues. Staff resolves (provides corrected data) or dismisses.</div></div></div>
+      <div class="route"><span class="method get">GET</span><div><div class="route-path">/dashboard/replies</div><div class="route-desc">Inbound SMS replies. Date filter, show-resolved toggle. Resolved rows hidden by default.</div></div></div>
+      <div class="route"><span class="method get">GET</span><div><div class="route-path">/dashboard/templates</div><div class="route-desc">Message template editor — admin only. Rich editor, live preview, [LOGO_BANNER] insert.</div></div></div>
+      <div class="route"><span class="method get">GET</span><div><div class="route-path">/dashboard/settings</div><div class="route-desc">System settings — admin only. Kill switch, quiet hours, channel toggles, alert config.</div></div></div>
+      <div class="route"><span class="method get">GET</span><div><div class="route-path">/dashboard/staff</div><div class="route-desc">Staff management — admin only. Add, toggle active, reset password.</div></div></div>
+    </div>
+
+    <h3>JSON API Endpoints</h3>
+    <div class="route-list">
+      <div class="route"><span class="method post">POST</span><div><div class="route-path">/dashboard/appointments/add</div><div class="route-desc">Manually create appointment. Triggers notification engine in background.</div></div></div>
+      <div class="route"><span class="method post">POST</span><div><div class="route-path">/dashboard/api/replies/{id}/resolve</div><div class="route-desc">Mark reply resolved. JSON body: <code>{resolved: bool}</code>. Records resolved_by from session.</div></div></div>
+      <div class="route"><span class="method post">POST</span><div><div class="route-path">/dashboard/api/templates/{id}</div><div class="route-desc">Save template body + subject.</div></div></div>
+      <div class="route"><span class="method post">POST</span><div><div class="route-path">/dashboard/api/templates/{id}/translate</div><div class="route-desc">Auto-translate template body to target language.</div></div></div>
+      <div class="route"><span class="method get">GET</span><div><div class="route-path">/dashboard/api/settings/alerts</div><div class="route-desc">Returns alert settings JSON for the settings page.</div></div></div>
+      <div class="route"><span class="method post">POST</span><div><div class="route-path">/dashboard/api/settings/alerts</div><div class="route-desc">Save alert settings (validates phone/email formats).</div></div></div>
+    </div>
+  </div>
+
+  <!-- ── ROUTES WEBHOOK ── -->
+  <div class="doc-section" id="routes-webhook">
+    <h2>Webhook Routes</h2>
+    <p>Unauthenticated. All Twilio routes validate <code class="inline">X-Twilio-Signature</code>. ClickUp validates <code class="inline">X-Signature</code> (HMAC-SHA256).</p>
+
+    <div class="route-list">
+      <div class="route"><span class="method post">POST</span><div><div class="route-path">/notifications/webhooks/twilio/sms</div><div class="route-desc">Inbound customer SMS. Logs to inbound_messages, handles STOP/START opt-outs, fires Discord alert.</div></div></div>
+      <div class="route"><span class="method post">POST</span><div><div class="route-path">/notifications/webhooks/twilio/status</div><div class="route-desc">Twilio delivery status. Updates notification_attempts.status (delivered, failed, undelivered…).</div></div></div>
+      <div class="route"><span class="method post">POST</span><div><div class="route-path">/notifications/webhooks/sendgrid/status</div><div class="route-desc">SendGrid event array. Parses sg_message_id, updates email_queue + notification_attempts.</div></div></div>
+      <div class="route"><span class="method post">POST</span><div><div class="route-path">/notifications/webhooks/clickup</div><div class="route-desc">ClickUp task update. Validates signature, extracts fields, upserts appointment or quarantines. Always 200.</div></div></div>
+      <div class="route"><span class="method get">GET</span><div><div class="route-path">/health</div><div class="route-desc">Returns <code>{"status": "ok"}</code>. Used by uptime monitors.</div></div></div>
+    </div>
+
+    <div class="callout warn">
+      <strong>⚠ SendGrid signature validation not implemented.</strong> The SendGrid status webhook currently accepts all POSTs without verifying the signature. This should be addressed before the service handles high volumes.
+    </div>
+  </div>
+
+  <!-- ── AUTH ── -->
+  <div class="doc-section" id="auth">
+    <h2>Auth &amp; Sessions</h2>
+
+    <h3>Session Mechanism</h3>
+    <p>Signed <code class="inline">itsdangerous.URLSafeTimedSerializer</code> cookie containing <code class="inline">{email, role}</code>. Cookie is <strong>HttpOnly, SameSite=Lax, Secure</strong> (production).</p>
+    <p>Default max age: 8 hours (<code class="inline">SESSION_MAX_AGE_SECONDS=28800</code>).</p>
+
+    <h3>Rate Limiting</h3>
+    <p>5 failed login attempts per IP per 15-minute window. Cleared on successful login. In-memory only (resets on server restart).</p>
+
+    <h3>Password Requirements</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Rule</th><th>Minimum</th></tr></thead>
+        <tbody>
+          <tr><td>Length</td><td>12 characters</td></tr>
+          <tr><td>Uppercase</td><td>1 (A–Z)</td></tr>
+          <tr><td>Lowercase</td><td>1 (a–z)</td></tr>
+          <tr><td>Digit</td><td>1 (0–9)</td></tr>
+          <tr><td>Special char</td><td>1 from <code>!@#$%^&*()_-=+[]{}|;:,.<>?</code></td></tr>
+          <tr><td>Email domain</td><td>Must end with <code>@ecosave-group.com</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Create First Admin</h3>
+    <pre>python create_admin.py</pre>
+  </div>
+
+  <!-- ── CLICKUP ── -->
+  <div class="doc-section" id="clickup">
+    <h2>ClickUp Integration</h2>
+    <p>ClickUp fires a webhook on task update. The service validates the HMAC-SHA256 signature, extracts customer fields using configured field UUIDs, and upserts an appointment.</p>
+
+    <h3>Field ID Configuration</h3>
+    <p>Run <code class="inline">python get_fields.py</code> to discover the field UUIDs for your ClickUp list. Then set them in <code class="inline">.env</code>:</p>
+    <pre><span class="key">CLICKUP_FIELD_NAME</span>=<span class="string">1ca299a3-2a6a-4102-b884-83d0ecaaa9c3</span>   <span class="comment"># Full Name</span>
+<span class="key">CLICKUP_FIELD_PHONE</span>=<span class="string">dd2505b0-b8ef-43cb-a730-4193efe7b664</span>  <span class="comment"># Phone</span>
+<span class="key">CLICKUP_FIELD_EMAIL</span>=<span class="string">333855a2-a98b-4fe9-b951-a9fd075c46d1</span>  <span class="comment"># Email</span>
+<span class="key">CLICKUP_FIELD_SCOPE</span>=<span class="string">50870f6d-1fa0-4cbc-af66-119a3de6d4b7</span>  <span class="comment"># Scope Of Work (multi-select)</span>
+<span class="key">CLICKUP_FIELD_DATE_HVAC</span>=<span class="string">8454f592-...</span>
+<span class="key">CLICKUP_FIELD_DATE_SOLAR</span>=<span class="string">e55a9e51-...</span>
+<span class="comment"># …one date field per service type</span></pre>
+
+    <h3>Scope → Date Field Mapping</h3>
+    <p>Each scope-of-work value maps to its relevant date field. First match wins when a task has multiple services.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Scope Label(s)</th><th>Date Field Used</th></tr></thead>
+        <tbody>
+          <tr><td>HVAC, Heat Pump, Mini-Split, Central AC</td><td><code>CLICKUP_FIELD_DATE_HVAC</code></td></tr>
+          <tr><td>Insulation (all variants)</td><td><code>CLICKUP_FIELD_DATE_INSULATION</code></td></tr>
+          <tr><td>Electrical (all variants)</td><td><code>CLICKUP_FIELD_DATE_ELECTRICAL</code></td></tr>
+          <tr><td>Energy Assessment</td><td><code>CLICKUP_FIELD_DATE_ASSESSMENT</code></td></tr>
+          <tr><td>Vermiculite, Asbestos, Mold Remediation</td><td><code>CLICKUP_FIELD_DATE_REMEDIATION</code></td></tr>
+          <tr><td>Solar</td><td><code>CLICKUP_FIELD_DATE_SOLAR</code></td></tr>
+          <tr><td>Roof (all variants)</td><td><code>CLICKUP_FIELD_DATE_ROOF</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Idempotency</h3>
+    <p>Each webhook event is recorded in the <code class="inline">webhook_events</code> table with a <code class="inline">UNIQUE</code> constraint on <code class="inline">(source, external_event_id)</code>. Duplicate webhook deliveries are safely ignored.</p>
+  </div>
+
+  <!-- ── DISCORD ── -->
+  <div class="doc-section" id="discord">
+    <h2>Discord &amp; Staff Alerts</h2>
+
+    <h3>Discord Webhook</h3>
+    <p>Set <code class="inline">DISCORD_WEBHOOK_URL</code> in <code class="inline">.env</code>. Two types of messages fire:</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Trigger</th><th>File</th><th>Format</th></tr></thead>
+        <tbody>
+          <tr><td>Every inbound SMS</td><td>sms_inbound.py</td><td>Text with emoji status (✅ Confirm, 🔄 Reschedule, ❓ Question, 💬 Unknown)</td></tr>
+          <tr><td>Escalated replies</td><td>reply_processor.py</td><td>Rich embed — color-coded by severity, includes appointment context</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Staff Alert Settings</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Setting Key</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>alert_sms_enabled</td><td>true</td><td>Send SMS to staff on escalated reply</td></tr>
+          <tr><td>alert_sms_to</td><td>(empty)</td><td>Comma-separated phone numbers</td></tr>
+          <tr><td>alert_sms_use_staff</td><td>true</td><td>Also include all admin_users with a phone</td></tr>
+          <tr><td>alert_email_enabled</td><td>true</td><td>Send email to staff on escalated reply</td></tr>
+          <tr><td>alert_email_to</td><td>(empty)</td><td>Comma-separated email addresses</td></tr>
+          <tr><td>alert_email_use_staff</td><td>true</td><td>Also include all admin_users with an email</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Configure via <strong>Dashboard → Settings → Alert Settings</strong>.</p>
+  </div>
+
+  <!-- ── CONFIG ── -->
+  <div class="doc-section" id="config">
+    <h2>Configuration</h2>
+    <p>All credentials and settings live in <code class="inline">.env</code>. Copy <code class="inline">.env.example</code> to get started. Never commit <code class="inline">.env</code>.</p>
+
+    <h3>Required Variables</h3>
+    <div class="env-block">
+      <div class="env-row"><div class="env-key">TWILIO_ACCOUNT_SID <span class="env-req">REQ</span></div><div class="env-desc">Twilio Account SID (starts AC...)</div></div>
+      <div class="env-row"><div class="env-key">TWILIO_AUTH_TOKEN <span class="env-req">REQ</span></div><div class="env-desc">Twilio Auth Token — used to validate incoming webhooks</div></div>
+      <div class="env-row"><div class="env-key">TWILIO_SMS_NUMBER <span class="env-req">REQ</span></div><div class="env-desc">Your Twilio number in E.164 format</div></div>
+      <div class="env-row"><div class="env-key">SENDGRID_API_KEY <span class="env-req">REQ</span></div><div class="env-desc">SendGrid API key with Mail Send permission</div></div>
+      <div class="env-row"><div class="env-key">SENDGRID_FROM_EMAIL <span class="env-req">REQ</span></div><div class="env-desc">Verified sender email address</div></div>
+      <div class="env-row"><div class="env-key">SENDGRID_FROM_NAME <span class="env-req">REQ</span></div><div class="env-desc">Display name for outbound emails</div></div>
+      <div class="env-row"><div class="env-key">SESSION_SECRET_KEY <span class="env-req">REQ</span></div><div class="env-desc">32+ char random string. Generate: <code>python -c "import secrets; print(secrets.token_hex(32))"</code></div></div>
+      <div class="env-row"><div class="env-key">WEBHOOK_BASE_URL <span class="env-req">REQ</span></div><div class="env-desc">Public HTTPS URL of this server (for Twilio signature validation)</div></div>
+      <div class="env-row"><div class="env-key">CLICKUP_WEBHOOK_SECRET <span class="env-req">REQ</span></div><div class="env-desc">Secret you set in ClickUp webhook config</div></div>
+      <div class="env-row"><div class="env-key">CLICKUP_API_TOKEN <span class="env-req">REQ</span></div><div class="env-desc">ClickUp personal API token</div></div>
+      <div class="env-row"><div class="env-key">GOOGLE_CREDENTIALS_PATH <span class="env-req">REQ</span></div><div class="env-desc">Path to Google service account JSON file</div></div>
+      <div class="env-row"><div class="env-key">GOOGLE_CALENDAR_IDS <span class="env-req">REQ</span></div><div class="env-desc">Comma-separated Google Calendar IDs to sync</div></div>
+    </div>
+
+    <h3>Optional Variables</h3>
+    <div class="env-block">
+      <div class="env-row"><div class="env-key">DB_PATH <span class="env-opt">opt</span></div><div class="env-desc">Default: ./storage.sqlite</div></div>
+      <div class="env-row"><div class="env-key">TZ <span class="env-opt">opt</span></div><div class="env-desc">Default: America/New_York</div></div>
+      <div class="env-row"><div class="env-key">LOG_LEVEL <span class="env-opt">opt</span></div><div class="env-desc">Default: INFO</div></div>
+      <div class="env-row"><div class="env-key">SESSION_SECURE_COOKIE <span class="env-opt">opt</span></div><div class="env-desc">Default: true (set false for local HTTP dev)</div></div>
+      <div class="env-row"><div class="env-key">SESSION_MAX_AGE_SECONDS <span class="env-opt">opt</span></div><div class="env-desc">Default: 28800 (8 hours)</div></div>
+      <div class="env-row"><div class="env-key">DISCORD_WEBHOOK_URL <span class="env-opt">opt</span></div><div class="env-desc">If blank, Discord alerts are silently skipped</div></div>
+    </div>
+  </div>
+
+  <!-- ── DEPLOYMENT ── -->
+  <div class="doc-section" id="deployment">
+    <h2>Deployment</h2>
+
+    <h3>Quick Start (Local)</h3>
+    <pre>python -m venv venv
+source venv/bin/activate          <span class="comment"># Windows: venv\Scripts\activate</span>
+pip install -r requirements.txt
+cp .env.example .env              <span class="comment"># fill in credentials</span>
+python db/migrate.py              <span class="comment"># init schema + run ALTER TABLE migrations</span>
+python create_admin.py            <span class="comment"># create first admin user</span>
+uvicorn webhook_server:app --host 127.0.0.1 --port 8096 --reload</pre>
+
+    <h3>Production (Linux / systemd)</h3>
+    <pre><span class="comment"># 1. Start the service</span>
+sudo systemctl enable notification-webhooks
+sudo systemctl start  notification-webhooks
+sudo journalctl -u notification-webhooks -f   <span class="comment"># watch logs</span>
+
+<span class="comment"># 2. Cron jobs — /etc/cron.d/notification_service</span>
+*/30 * * * *  www-data  cd /opt/notification_service && venv/bin/python notification_engine.py
+*/5  * * * *  www-data  cd /opt/notification_service && venv/bin/python workers/reply_processor.py
+5,35 * * * *  www-data  cd /opt/notification_service && venv/bin/python channels/sendgrid_email.py
+*/15 * * * *  www-data  cd /opt/notification_service && venv/bin/python calendar_sync.py</pre>
+
+    <div class="callout info">
+      <strong>Startup migration:</strong> <code class="inline">webhook_server.py</code> calls <code class="inline">run_migration()</code> on the FastAPI startup event. New database columns are added automatically each time the server restarts — no manual migration step needed after deploys.
+    </div>
+
+    <h3>Server Details</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Detail</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td>Live URL</td><td><code>https://spark-1bc3.tailea79dc.ts.net</code></td></tr>
+          <tr><td>Internal port</td><td><code>127.0.0.1:8096</code></td></tr>
+          <tr><td>systemd unit</td><td><code>ecosave-webhooks</code></td></tr>
+          <tr><td>DB path</td><td><code>/opt/ecosave-notification/storage.sqlite</code></td></tr>
+          <tr><td>App path</td><td><code>/opt/ecosave-notification/</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── RULES ── -->
+  <div class="doc-section" id="rules">
+    <h2>Design Rules</h2>
+    <div class="rules">
+      <div class="rule-item"><div class="rule-num">R1</div><div class="rule-body"><strong>Always use get_connection()</strong><span>Never call sqlite3.connect() directly. get_connection() enables WAL mode, busy timeout, foreign keys, and row_factory.</span></div></div>
+      <div class="rule-item"><div class="rule-num">R2</div><div class="rule-body"><strong>Credentials from .env only</strong><span>Never hardcode keys, tokens, passwords, or SIDs. Never log these values.</span></div></div>
+      <div class="rule-item"><div class="rule-num">R3</div><div class="rule-body"><strong>Validate all webhook signatures</strong><span>Twilio: X-Twilio-Signature. ClickUp: X-Signature (HMAC-SHA256). SendGrid: ⚠ not yet implemented.</span></div></div>
+      <div class="rule-item"><div class="rule-num">R4</div><div class="rule-body"><strong>Track every notification attempt</strong><span>Insert into notification_attempts before sending. Update status after send or receipt.</span></div></div>
+      <div class="rule-item"><div class="rule-num">R5</div><div class="rule-body"><strong>Respect opt-outs</strong><span>Check opt_outs table before every SMS send. STOP words auto-create opt-out rows.</span></div></div>
+      <div class="rule-item"><div class="rule-num">R6</div><div class="rule-body"><strong>Never send email inline</strong><span>Always queue to email_queue. The engine never calls SendGrid directly.</span></div></div>
+      <div class="rule-item"><div class="rule-num">R7</div><div class="rule-body"><strong>UNIQUE constraint deduplication</strong><span>notification_attempts has a UNIQUE key on (appointment_id, rule_name, channel, appointment_at). Safe to run engine multiple times.</span></div></div>
+      <div class="rule-item"><div class="rule-num">R8</div><div class="rule-body"><strong>Quarantine bad data</strong><span>Validate phone, name, date. Quarantine instead of silently skipping. Surface to staff for resolution.</span></div></div>
+      <div class="rule-item"><div class="rule-num">R9</div><div class="rule-body"><strong>Enforce quiet hours</strong><span>Don't send outside quiet_hours_start…quiet_hours_end. Configurable per timezone. Check before every engine run.</span></div></div>
+      <div class="rule-item"><div class="rule-num">R10</div><div class="rule-body"><strong>Bind to 127.0.0.1:8096</strong><span>Never expose FastAPI directly to the internet. Always terminate TLS at Nginx.</span></div></div>
+      <div class="rule-item"><div class="rule-num">R11</div><div class="rule-body"><strong>Respect the kill switch</strong><span>Check notifications_paused setting before all engine work. If TRUE, exit immediately.</span></div></div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+function downloadDoc() {
+  const html = '<!DOCTYPE html><html><head><meta charset="utf-8">' + document.head.innerHTML + '</head><body>' + document.body.innerHTML + '</body></html>';
+  const blob = new Blob([html], {type: 'text/html'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'ecosave-notification-service-docs.html';
+  a.click();
+}
+
+// Sticky nav highlight
+const sections = document.querySelectorAll('.doc-section');
+const links    = document.querySelectorAll('nav#sidebar a');
+
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.remove('active'));
+      const match = document.querySelector(`nav#sidebar a[href="#${e.target.id}"]`);
+      if (match) match.classList.add('active');
+    }
+  });
+}, { rootMargin: '-30% 0px -60% 0px' });
+
+sections.forEach(s => observer.observe(s));
+</script>
