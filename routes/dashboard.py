@@ -26,6 +26,7 @@ from auth.session import (
     clear_failed_attempts,
 )
 from auth.csrf import generate_csrf_token, validate_csrf_token
+from utils.log_helpers import mask_phone
 import phonenumbers
 
 logger = logging.getLogger(__name__)
@@ -475,7 +476,7 @@ async def add_appointment(
             )
         )
         conn.commit()
-        logger.info("Manually added appointment %s for %s", appt_id, formatted_phone)
+        logger.info("Manually added appointment %s for %s", appt_id, mask_phone(formatted_phone))
         
         # Auto-trigger the notification engine in the background
         background_tasks.add_task(notification_engine.run)
@@ -570,6 +571,8 @@ async def deliveries(request: Request, status: str = "", channel: str = "", star
     if redirect:
         return redirect
     user = get_current_user(request)
+    if not user or user.get("role") != "admin":
+        return RedirectResponse(url="/dashboard/", status_code=302)
 
     conn = get_connection()
     try:
@@ -830,6 +833,8 @@ async def settings_page(request: Request, saved: bool = False, password_success:
     if redirect:
         return redirect
     user = get_current_user(request)
+    if not user or user.get("role") != "admin":
+        return RedirectResponse(url="/dashboard/", status_code=302)
 
     conn = get_connection()
     try:
@@ -1161,6 +1166,9 @@ async def update_settings(
     redirect = require_login(request)
     if redirect:
         return redirect
+    user = get_current_user(request)
+    if not user or user.get("role") != "admin":
+        return RedirectResponse(url="/dashboard/", status_code=302)
     if not validate_csrf_token(csrf_token):
         return RedirectResponse(url="/dashboard/settings?error=Invalid+CSRF+token", status_code=303)
 
@@ -1199,6 +1207,9 @@ async def update_global_password(
     redirect = require_login(request)
     if redirect:
         return redirect
+    user = get_current_user(request)
+    if not user or user.get("role") != "admin":
+        return RedirectResponse(url="/dashboard/", status_code=302)
 
     from db.admin_users import validate_password_strength, hash_password
     import urllib.parse
@@ -1277,6 +1288,9 @@ async def edit_template(
     redirect = require_login(request)
     if redirect:
         return redirect
+    user = get_current_user(request)
+    if not user or user.get("role") != "admin":
+        return RedirectResponse(url="/dashboard/", status_code=302)
     if not validate_csrf_token(csrf_token):
         return RedirectResponse(url="/dashboard/templates?error=Invalid+CSRF+token", status_code=303)
 
@@ -1299,13 +1313,15 @@ async def delete_template(request: Request, id: int, csrf_token: str = Form(...)
     redirect = require_login(request)
     if redirect:
         return redirect
+    user = get_current_user(request)
+    if not user or user.get("role") != "admin":
+        return RedirectResponse(url="/dashboard/", status_code=302)
     if not validate_csrf_token(csrf_token):
         return RedirectResponse(url="/dashboard/templates?error=Invalid+CSRF+token", status_code=303)
 
     import sqlite3
     from urllib.parse import urlencode
-    
-    user = get_current_user(request)
+
     user_email = user["email"] if user else "unknown"
     logger.info("User %s attempting to delete template %s", user_email, id)
 
