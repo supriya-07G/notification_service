@@ -14,7 +14,7 @@ def mask_name(n: str) -> str:
     return parts[0][:3] + "***" if len(parts[0]) > 3 else "***"
 
 def mask_phone_full(p: str) -> str:
-    """Shows full phone number but intentionally wrapped for log context."""
-    if not p:
+    """Mask phone number, keeping only country code and last 2 digits."""
+    if not p or len(p) < 4:
         return "***"
-    return p  # Only use in non-production, or implement full masking
+    return f"{p[:2]}***{p[-2:]}"
