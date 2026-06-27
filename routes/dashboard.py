@@ -782,6 +782,7 @@ async def replies(request: Request):
                 "active_page": "replies",
                 "replies": items,
                 "user": user,
+                "csrf_token": generate_csrf_token(),
                 **nav
             }
         )
@@ -792,10 +793,14 @@ async def replies(request: Request):
 async def api_resolve_reply(reply_id: int, request: Request):
     redirect = require_login(request)
     if redirect:
-        return {"error": "Unauthorized"}
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     user = get_current_user(request)
     if not user:
-        return {"error": "Unauthorized"}
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+
+    csrf = request.headers.get("X-CSRF-Token", "")
+    if not validate_csrf_token(csrf):
+        return JSONResponse(status_code=403, content={"error": "Invalid CSRF token"})
 
     data = await request.json()
     resolved = bool(data.get("resolved", True))
@@ -1254,7 +1259,8 @@ async def add_template(
         )
         conn.commit()
     except Exception as e:
-        return RedirectResponse(url=f"/dashboard/templates?error={str(e)}", status_code=303)
+        logger.error("Template creation failed: %s", e)
+        return RedirectResponse(url="/dashboard/templates?error=Failed+to+create+template.+Check+for+duplicate+channel%2Ftype%2Flang%2Frule+combination.", status_code=303)
     finally:
         conn.close()
     return RedirectResponse(url="/dashboard/templates?saved=true", status_code=303)
@@ -1509,10 +1515,13 @@ async def api_get_template(request: Request, id: int):
 async def api_save_template(request: Request, id: int, data: dict = Body(...)):
     redirect = require_login(request)
     if redirect:
-        return {"error": "Unauthorized"}
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     user = get_current_user(request)
     if not user or user.get("role") != "admin":
         return JSONResponse(status_code=403, content={"error": "Admin access required"})
+    csrf = request.headers.get("X-CSRF-Token", "")
+    if not validate_csrf_token(csrf):
+        return JSONResponse(status_code=403, content={"error": "Invalid CSRF token"})
 
     conn = get_connection()
     try:
@@ -1529,10 +1538,13 @@ async def api_save_template(request: Request, id: int, data: dict = Body(...)):
 async def api_translate_template(request: Request, id: int, data: dict = Body(...)):
     redirect = require_login(request)
     if redirect:
-        return {"error": "Unauthorized"}
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     user = get_current_user(request)
     if not user or user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+        return JSONResponse(status_code=403, content={"error": "Admin access required"})
+    csrf = request.headers.get("X-CSRF-Token", "")
+    if not validate_csrf_token(csrf):
+        return JSONResponse(status_code=403, content={"error": "Invalid CSRF token"})
         
     body = data.get("body", "")
     translated = translate_text(body)
@@ -1542,10 +1554,13 @@ async def api_translate_template(request: Request, id: int, data: dict = Body(..
 async def api_revert_template(request: Request, id: int):
     redirect = require_login(request)
     if redirect:
-        return {"error": "Unauthorized"}
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     user = get_current_user(request)
     if not user or user.get("role") != "admin":
         return JSONResponse(status_code=403, content={"error": "Admin access required"})
+    csrf = request.headers.get("X-CSRF-Token", "")
+    if not validate_csrf_token(csrf):
+        return JSONResponse(status_code=403, content={"error": "Invalid CSRF token"})
         
     # Default string based on typical reminders
     default_sms = "Hi {{customer_name}}, this is a reminder for your {{appointment_type}} appointment on {{appointment_date}} at {{appointment_time}}."
@@ -1563,10 +1578,13 @@ async def api_revert_template(request: Request, id: int):
 async def api_test_send_template(request: Request, id: int, data: dict = Body(...)):
     redirect = require_login(request)
     if redirect:
-        return {"error": "Unauthorized"}
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     user = get_current_user(request)
     if not user or user.get("role") != "admin":
         return JSONResponse(status_code=403, content={"error": "Admin access required"})
+    csrf = request.headers.get("X-CSRF-Token", "")
+    if not validate_csrf_token(csrf):
+        return JSONResponse(status_code=403, content={"error": "Invalid CSRF token"})
         
     to = data.get("to", "").strip()
     if not to:
@@ -1608,7 +1626,7 @@ async def api_test_send_template(request: Request, id: int, data: dict = Body(..
             return {"success": True, "message": f"Test email sent to {to}"}
     except Exception as e:
         logger.error("Test send failed: %s", e)
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        return JSONResponse(status_code=500, content={"error": "Test send failed. Check server logs for details."})
     finally:
         conn.close()
 
@@ -1643,10 +1661,13 @@ async def api_get_alerts(request: Request):
 async def api_save_alerts(request: Request, data: dict = Body(...)):
     redirect = require_login(request)
     if redirect:
-        return {"error": "Unauthorized"}
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     user = get_current_user(request)
     if not user or user.get("role") != "admin":
-        return {"error": "Unauthorized"}
+        return JSONResponse(status_code=403, content={"error": "Unauthorized"})
+    csrf = request.headers.get("X-CSRF-Token", "")
+    if not validate_csrf_token(csrf):
+        return JSONResponse(status_code=403, content={"error": "Invalid CSRF token"})
 
     errors = []
     sms_from = data.get("alert_sms_from", "").strip()
