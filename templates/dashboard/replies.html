@@ -3,6 +3,7 @@
 {% block title %}Inbound Replies - EcoSave Dashboard{% endblock %}
 
 {% block content %}
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 <div class="row mb-3">
   <div class="col-12 text-dark">
     <h1 class="h2 text-dark font-weight-bold">Inbound Replies</h1>
@@ -207,9 +208,11 @@
       const span     = this.parentElement.querySelector(".done-label");
 
       try {
+        const csrfEl = document.querySelector('input[name="csrf_token"]');
+        const csrfToken = csrfEl ? csrfEl.value : '';
         const resp = await fetch(`/dashboard/api/replies/${id}/resolve`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
           body: JSON.stringify({ resolved })
         });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
