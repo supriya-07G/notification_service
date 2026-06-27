@@ -90,20 +90,26 @@ def get_template(
     return None
 
 
-def render_template(body: str, data: dict) -> str:
+def render_template(body: str, data: dict, html_escape_values: bool = False) -> str:
     """Replace all {{variable_name}} tokens in *body* with values from *data*.
 
     Supported keys in *data*:
         customer_name, appointment_type, appointment_date,
         appointment_time, location, calendar_source
 
+    Args:
+        html_escape_values: When True, HTML-escape each value before substitution
+            (use for email channel to prevent XSS via calendar event data).
+
     Raises:
         ValueError: if any {{placeholder}} token remains after substitution,
                     which indicates a misconfigured template or missing data.
     """
+    from html import escape as _html_escape
     result = body
     for key, value in data.items():
-        result = result.replace("{{" + key + "}}", str(value))
+        safe_value = _html_escape(str(value)) if html_escape_values else str(value)
+        result = result.replace("{{" + key + "}}", safe_value)
 
     # Detect any unreplaced placeholders
     remaining = re.findall(r"\{\{[^}]+\}\}", result)
