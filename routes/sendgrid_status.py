@@ -1,18 +1,54 @@
 import logging
-from typing import List, Dict, Any
 from fastapi import APIRouter, Request, Response
+from sendgrid.helpers.eventwebhook import EventWebhook, EventWebhookHeader
+
+import config
 from db.init import get_connection
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+
+def _verify_sendgrid_signature(raw_body: bytes, headers: dict) -> bool:
+    """Verify SendGrid Event Webhook ECDSA signature.
+
+    Requires SENDGRID_WEBHOOK_VERIFY_KEY in .env (from SendGrid Mail Settings
+    → Event Webhook → Signed Event Webhook → Verification Key).
+    If the key is not configured, reject all requests.
+    """
+    verify_key = getattr(config, "SENDGRID_WEBHOOK_VERIFY_KEY", "")
+    if not verify_key:
+        logger.warning("SENDGRID_WEBHOOK_VERIFY_KEY not set — rejecting webhook")
+        return False
+
+    signature = headers.get(EventWebhookHeader.SIGNATURE, "")
+    timestamp = headers.get(EventWebhookHeader.TIMESTAMP, "")
+    if not signature or not timestamp:
+        return False
+
+    try:
+        ew = EventWebhook()
+        key = ew.convert_public_key_to_ecdsa(verify_key)
+        return ew.verify_signature(raw_body.decode("utf-8"), signature, timestamp, key)
+    except Exception as e:
+        logger.warning("SendGrid signature verification error: %s", e)
+        return False
+
+
 @router.post("/webhooks/sendgrid/status")
 async def handle_sendgrid_status(request: Request):
-    """
-    Handle SendGrid Event Webhook POST requests.
+    """Handle SendGrid Event Webhook POST requests.
+
+    Validates ECDSA signature before processing.
     Expects a JSON array of events.
     """
+    raw_body = await request.body()
+
+    if not _verify_sendgrid_signature(raw_body, dict(request.headers)):
+        logger.warning("SendGrid webhook rejected: invalid signature")
+        return Response(status_code=403)
+
     try:
         events = await request.json()
     except Exception as e:
@@ -31,8 +67,6 @@ async def handle_sendgrid_status(request: Request):
             if not sg_message_id or not event_type:
                 continue
 
-            # SendGrid often appends `.filterXXXX` to the message ID in the webhook payload
-            # So we split by `.` to get the raw message ID that matches the DB
             raw_sg_message_id = sg_message_id.split('.')[0] if '.' in sg_message_id else sg_message_id
 
             row = conn.execute(
@@ -53,7 +87,7 @@ async def handle_sendgrid_status(request: Request):
                     [f"{raw_sg_message_id}%"]
                 )
                 conn.execute(
-                    """UPDATE notification_attempts 
+                    """UPDATE notification_attempts
                        SET status = 'delivered', status_updated_at = CURRENT_TIMESTAMP
                        WHERE appointment_id = ? AND rule_name = ? AND channel = 'email'""",
                     [appointment_id, rule_name]
@@ -66,7 +100,7 @@ async def handle_sendgrid_status(request: Request):
                     [event_type, f"{raw_sg_message_id}%"]
                 )
                 conn.execute(
-                    """UPDATE notification_attempts 
+                    """UPDATE notification_attempts
                        SET status = 'failed', error_code = 'SENDGRID_ERROR', error_message = ?, status_updated_at = CURRENT_TIMESTAMP
                        WHERE appointment_id = ? AND rule_name = ? AND channel = 'email'""",
                     [event_type, appointment_id, rule_name]
@@ -79,5 +113,4 @@ async def handle_sendgrid_status(request: Request):
     finally:
         conn.close()
 
-    # Always return 200 OK
     return Response(status_code=200)
