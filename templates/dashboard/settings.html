@@ -296,9 +296,11 @@ document.addEventListener("DOMContentLoaded", function() {
     btnSave.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
     btnSave.disabled = true;
 
+    const csrfEl = document.querySelector('input[name="csrf_token"]');
+    const csrfToken = csrfEl ? csrfEl.value : '';
     fetch("/dashboard/api/settings/alerts", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
       body: JSON.stringify(payload)
     })
     .then(res => res.json())
