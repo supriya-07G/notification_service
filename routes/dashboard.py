@@ -1622,7 +1622,7 @@ async def api_test_send_template(request: Request, id: int, data: dict = Body(..
         }
         from db.templates import render_template
         from channels.sendgrid_email import LOGO_BANNER_HTML
-        body = render_template(tmpl["body"], sample_data)
+        body = render_template(tmpl["body"], sample_data, html_escape_values=(tmpl["channel"] == "email"))
         body = body.replace("[LOGO_BANNER]", LOGO_BANNER_HTML)
 
         if tmpl["channel"] == "sms":
