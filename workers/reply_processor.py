@@ -2,6 +2,7 @@ import logging
 import httpx
 import os
 import sys
+from html import escape as html_escape
 
 # Ensure project root is on sys.path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -108,14 +109,14 @@ def send_email_alert(message_row: dict, classification: str, appointment: dict, 
     if not recipients:
         return
         
-    appt_text = f"<p><strong>Appointment:</strong> {appointment['customer_name']} ({appointment['appointment_at']})</p>" if appointment else ""
-    
+    appt_text = f"<p><strong>Appointment:</strong> {html_escape(appointment['customer_name'])} ({html_escape(str(appointment['appointment_at']))})</p>" if appointment else ""
+
     html_content = f"""
-    <h3>⚠️ Customer Reply Alert: {classification.upper()}</h3>
-    <p><strong>From:</strong> {message_row['from_address']}</p>
+    <h3>Customer Reply Alert: {html_escape(classification.upper())}</h3>
+    <p><strong>From:</strong> {html_escape(message_row['from_address'])}</p>
     {appt_text}
     <p><strong>Message:</strong></p>
-    <blockquote style="border-left: 4px solid #ccc; padding-left: 10px; color: #555;">{message_row['body']}</blockquote>
+    <blockquote style="border-left: 4px solid #ccc; padding-left: 10px; color: #555;">{html_escape(message_row['body'] or '')}</blockquote>
     """
     
     try:
