@@ -12,6 +12,7 @@ from twilio.request_validator import RequestValidator
 
 import config
 from db.init import get_connection
+from utils.log_helpers import mask_phone
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +84,7 @@ async def sms_inbound(request: Request):
             [from_phone, "sms", body, sid],
         )
         conn.commit()
-        logger.info("Inbound SMS logged: %s from %s", sid, from_phone)
+        logger.info("Inbound SMS logged: %s from %s", sid, mask_phone(from_phone))
 
         if body_upper in _STOP_WORDS:
             conn.execute(
@@ -91,7 +92,7 @@ async def sms_inbound(request: Request):
                 [from_phone, "sms", "inbound_stop"],
             )
             conn.commit()
-            logger.info("Opt-out recorded: %s (STOP)", from_phone)
+            logger.info("Opt-out recorded: %s (STOP)", mask_phone(from_phone))
 
         elif body_upper in _START_WORDS:
             conn.execute(
@@ -99,17 +100,23 @@ async def sms_inbound(request: Request):
                 [from_phone],
             )
             conn.commit()
-            logger.info("Opt-in recorded: %s (START)", from_phone)
+            logger.info("Opt-in recorded: %s (START)", mask_phone(from_phone))
+
+        customer = conn.execute(
+            "SELECT customer_name FROM appointments WHERE customer_phone=? ORDER BY appointment_at DESC LIMIT 1",
+            [from_phone],
+        ).fetchone()
+        customer_name = customer["customer_name"] if customer else None
 
     finally:
         conn.close()
 
-    _notify_discord(from_phone, body, _classify(body))
+    _notify_discord(from_phone, body, _classify(body), customer_name)
 
     return Response(content="<Response/>", media_type="application/xml")
 
 
-def _notify_discord(from_phone: str, body: str, status: str = "unknown") -> None:
+def _notify_discord(from_phone: str, body: str, status: str = "unknown", customer_name: str = None) -> None:
     """Fire-and-forget POST to Discord webhook."""
     url = config.DISCORD_WEBHOOK_URL
     if not url:
@@ -118,8 +125,9 @@ def _notify_discord(from_phone: str, body: str, status: str = "unknown") -> None
         import json as _json
         emoji = _STATUS_EMOJI.get(status, "💬")
         label = status.replace("_", " ").title()
+        from_display = f"{customer_name} ({mask_phone(from_phone)})" if customer_name else mask_phone(from_phone)
         payload = _json.dumps({
-            "content": f"📩 **Customer Reply**\n**From:** {from_phone}\n**Status:** {emoji} {label}\n**Message:** {body}"
+            "content": f"📩 **Customer Reply**\n**From:** {from_display}\n**Status:** {emoji} {label}\n**Message:** (see dashboard)"
         }).encode()
         req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
         urllib.request.urlopen(req, timeout=5)
