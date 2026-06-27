@@ -9,6 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import config
 from db.init import get_connection
+from utils.log_helpers import mask_phone, mask_name
 from db.settings import Settings
 from twilio.rest import Client
 from sendgrid import SendGridAPIClient
@@ -44,15 +45,15 @@ def send_discord_alert(message_row: dict, classification: str, appointment: dict
         "title": f"Customer Reply — {classification.replace('_',' ').title()}",
         "color": color,
         "fields": [
-            {"name": "From", "value": message_row['from_address'], "inline": True},
+            {"name": "From", "value": f"{appointment['customer_name']} ({mask_phone(message_row['from_address'])})" if appointment else mask_phone(message_row['from_address']), "inline": True},
             {"name": "Channel", "value": message_row['channel'], "inline": True},
-            {"name": "Message", "value": message_row['body'], "inline": False},
+            {"name": "Message", "value": "(see dashboard for details)", "inline": False},
         ]
     }
     if appointment:
         embed['fields'].append({
             "name": "Appointment",
-            "value": f"{appointment['customer_name']} — {appointment['appointment_at']}",
+            "value": f"{mask_name(appointment['customer_name'])} — {appointment['appointment_at']}",
             "inline": False
         })
     try:
@@ -80,8 +81,10 @@ def send_sms_alert(message_row: dict, classification: str, appointment: dict, se
         return
         
     client = Client(config.TWILIO_ACCOUNT_SID, config.TWILIO_AUTH_TOKEN)
-    appt_text = f" - {appointment['customer_name']} ({appointment['appointment_at']})" if appointment else ""
-    body = f"⚠️ Alert: Customer replied '{classification.upper()}'\nFrom: {message_row['from_address']}{appt_text}\nMsg: {message_row['body']}"
+    from_display = f"{appointment['customer_name']} ({mask_phone(message_row['from_address'])})" if appointment else mask_phone(message_row['from_address'])
+    appt_text = f"\nAppt: {appointment['appointment_at']}" if appointment else ""
+    safe_body = (message_row['body'] or '')[:100].replace('\n', ' ')
+    body = f"⚠️ Alert: Customer replied '{classification.upper()}'\nFrom: {from_display}{appt_text}\nMsg: {safe_body}"
     
     for to in recipients:
         try:
