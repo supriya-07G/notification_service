@@ -70,7 +70,7 @@ def run() -> None:
                 )
 
             data = json.loads(row["template_data"])
-            body_html = render_template(tmpl_body, data)
+            body_html = render_template(tmpl_body, data, html_escape_values=True)
             body_html = body_html.replace("[LOGO_BANNER]", LOGO_BANNER_HTML)
             subject = render_template(
                 row["tmpl_subject"] or "Appointment Reminder", data
