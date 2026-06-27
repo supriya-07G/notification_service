@@ -8,6 +8,7 @@ Rule 2: Never store or log plaintext passwords.
 
 import logging
 import re
+import secrets
 
 # pyrefly: ignore [missing-import]
 from passlib.context import CryptContext
@@ -135,3 +136,48 @@ def authenticate(email: str, password: str) -> dict | None:
         return {"id": user_id, "email": email_clean, "role": user_role}
     finally:
         conn.close()
+
+
+def get_or_create_staff_from_sso(conn, email: str, name: str) -> dict:
+    """Return existing admin_users row or create a new one for SSO users.
+
+    SSO users get:
+      - role = 'staff'
+      - is_active = 1
+      - force_password_reset = 0
+      - hashed_password = random bcrypt (they will always use SSO)
+      - phone = NULL
+    """
+    email_clean = email.strip().lower()
+
+    row = conn.execute(
+        "SELECT id, email, role, is_active FROM admin_users WHERE email = ?",
+        [email_clean],
+    ).fetchone()
+
+    if row:
+        if not row["is_active"]:
+            raise ValueError(f"Account {email_clean} is inactive.")
+        conn.execute(
+            "UPDATE admin_users SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?",
+            [row["id"]],
+        )
+        conn.commit()
+        return {"id": row["id"], "email": email_clean, "role": row["role"] or "staff"}
+
+    # New SSO user — generate a random password hash they will never use
+    random_password = secrets.token_hex(32)
+    password_hash = pwd_context.hash(random_password)
+
+    conn.execute(
+        """INSERT INTO admin_users
+               (email, name, password_hash, role, is_active, force_password_reset, last_login_at)
+           VALUES (?, ?, ?, 'staff', 1, 0, CURRENT_TIMESTAMP)""",
+        [email_clean, name, password_hash],
+    )
+    conn.commit()
+    new_id = conn.execute(
+        "SELECT id FROM admin_users WHERE email = ?", [email_clean]
+    ).fetchone()["id"]
+    logger.info("SSO: created new staff account for %s", email_clean)
+    return {"id": new_id, "email": email_clean, "role": "staff"}

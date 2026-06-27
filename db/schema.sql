@@ -206,6 +206,16 @@ CREATE TABLE IF NOT EXISTS webhook_events (
 CREATE INDEX IF NOT EXISTS idx_webhook_events_lookup
     ON webhook_events(source, external_event_id);
 
+-- ----- oauth_states (Google SSO CSRF protection) -----
+CREATE TABLE IF NOT EXISTS oauth_states (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    state TEXT NOT NULL UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP DEFAULT (datetime('now', '+5 minutes'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_oauth_states_state ON oauth_states(state, expires_at);
+
 -- ----- audit_log -----
 CREATE TABLE IF NOT EXISTS audit_log (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

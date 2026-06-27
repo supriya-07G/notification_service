@@ -16,6 +16,7 @@ from routes.status_callback import router as status_router
 from routes.sendgrid_status import router as sendgrid_router
 from routes.clickup_webhook import router as clickup_router
 from routes.dashboard import router as dashboard_router
+from routes.sso import router as sso_router
 
 app = FastAPI(title="Notification Service", docs_url=None, redoc_url=None)
 
@@ -28,6 +29,7 @@ app.include_router(status_router)
 app.include_router(sendgrid_router)
 app.include_router(clickup_router)
 app.include_router(dashboard_router)
+app.include_router(sso_router)
 
 from fastapi.staticfiles import StaticFiles
 import os

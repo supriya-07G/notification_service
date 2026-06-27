@@ -33,6 +33,7 @@ def run_migration():
         _add_column_if_missing(conn, "inbound_messages", "resolved",    "BOOLEAN DEFAULT FALSE")
         _add_column_if_missing(conn, "inbound_messages", "resolved_at", "TIMESTAMP")
         _add_column_if_missing(conn, "inbound_messages", "resolved_by", "TEXT")
+        # oauth_states is created by schema.sql (CREATE TABLE IF NOT EXISTS)
         conn.commit()
 
         print("Migration complete.")

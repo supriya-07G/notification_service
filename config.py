@@ -98,6 +98,10 @@ CLICKUP_FIELD_PROGRAM = os.getenv(
 
 # ── Dashboard (DEPRECATED — kept for backward compatibility) ───────────────
 
+# ── Google SSO ────────────────────────────────────────────────────────────
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
+
 # ── Session Auth (Phase 4) ─────────────────────────────────────────────────
 SESSION_SECRET_KEY = os.getenv("SESSION_SECRET_KEY", "")
 SESSION_SECURE_COOKIE = os.getenv("SESSION_SECURE_COOKIE", "true")
