@@ -40,6 +40,7 @@ TWILIO_SMS_NUMBER = os.getenv("TWILIO_SMS_NUMBER", "")
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY", "")
 SENDGRID_FROM_EMAIL = os.getenv("SENDGRID_FROM_EMAIL", "")
 SENDGRID_FROM_NAME = os.getenv("SENDGRID_FROM_NAME", "")
+SENDGRID_WEBHOOK_VERIFY_KEY = os.getenv("SENDGRID_WEBHOOK_VERIFY_KEY", "")
 
 # ── Discord ────────────────────────────────────────────────────────────────
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "")
