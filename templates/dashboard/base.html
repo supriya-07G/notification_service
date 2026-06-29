@@ -197,9 +197,11 @@
               {% endif %}
             </a>
           </li>
+          {% if user is mapping and user.role in ('super_admin', 'admin') %}
           <li class="nav-item">
             <a class="nav-link {% if active_page == 'deliveries' %}active{% endif %}" href="/dashboard/deliveries"><i class="bi bi-send me-1"></i> Deliveries</a>
           </li>
+          {% endif %}
           <li class="nav-item">
             <a class="nav-link {% if active_page == 'replies' %}active{% endif %}" href="/dashboard/replies">
               <i class="bi bi-chat-left-text me-1"></i> Replies
@@ -211,10 +213,10 @@
           <li class="nav-item">
             <a class="nav-link {% if active_page == 'templates' %}active{% endif %}" href="/dashboard/templates"><i class="bi bi-file-earmark-code me-1"></i> Templates</a>
           </li>
+          {% if user is mapping and user.role in ('super_admin', 'admin') %}
           <li class="nav-item">
             <a class="nav-link {% if active_page == 'settings' %}active{% endif %}" href="/dashboard/settings"><i class="bi bi-sliders me-1"></i> Settings</a>
           </li>
-          {% if user is mapping and user.role == 'admin' %}
           <li class="nav-item">
             <a class="nav-link {% if active_page == 'staff' %}active{% endif %}" href="/dashboard/staff"><i class="bi bi-people me-1"></i> Staff</a>
           </li>

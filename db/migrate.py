@@ -19,6 +19,50 @@ def _add_column_if_missing(conn, table: str, column: str, definition: str):
         print(f"  Added column {table}.{column}")
 
 
+def _migrate_roles(conn):
+    """Migrate from two-tier (admin/staff) to three-tier (super_admin/admin/user) roles."""
+    # Check if migration is needed by looking at the CHECK constraint
+    table_sql = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='admin_users'"
+    ).fetchone()
+    if not table_sql or 'super_admin' in table_sql[0]:
+        return  # Already migrated or table doesn't exist
+
+    # SQLite requires table recreation to change CHECK constraints
+    conn.executescript("""
+        CREATE TABLE IF NOT EXISTS admin_users_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT UNIQUE NOT NULL COLLATE NOCASE,
+            password_hash TEXT NOT NULL,
+            name TEXT DEFAULT '',
+            phone TEXT,
+            role TEXT CHECK(role IN ('super_admin','admin','user')) DEFAULT 'user',
+            is_active BOOLEAN DEFAULT TRUE,
+            force_password_reset BOOLEAN DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            last_login_at TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        INSERT INTO admin_users_new (id, email, password_hash, name, phone, role, is_active, force_password_reset, created_at, last_login_at, updated_at)
+            SELECT id, email, password_hash, name, phone,
+                   CASE WHEN role = 'staff' THEN 'user' ELSE role END,
+                   is_active, force_password_reset, created_at, last_login_at, updated_at
+            FROM admin_users;
+
+        DROP TABLE admin_users;
+        ALTER TABLE admin_users_new RENAME TO admin_users;
+
+        CREATE INDEX IF NOT EXISTS idx_admin_users_email ON admin_users(email);
+    """)
+
+    # Set super admins
+    conn.execute(
+        "UPDATE admin_users SET role = 'super_admin' WHERE email IN (?, ?)",
+        ['michael@ecosave-group.com', 'polly@ecosave-group.com']
+    )
+
+
 def run_migration():
     schema_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "schema.sql")
 
@@ -34,6 +78,10 @@ def run_migration():
         _add_column_if_missing(conn, "inbound_messages", "resolved_at", "TIMESTAMP")
         _add_column_if_missing(conn, "inbound_messages", "resolved_by", "TEXT")
         # oauth_states is created by schema.sql (CREATE TABLE IF NOT EXISTS)
+
+        # Migrate role column: add super_admin support, rename 'staff' -> 'user'
+        _migrate_roles(conn)
+
         conn.commit()
 
         print("Migration complete.")

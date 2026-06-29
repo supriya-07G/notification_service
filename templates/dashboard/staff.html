@@ -29,7 +29,7 @@
   <button class="btn btn-success text-white d-flex align-items-center gap-1" type="button" data-bs-toggle="collapse" data-bs-target="#addStaffCard">
     <i class="bi bi-person-plus-fill"></i> Add New Staff Member
   </button>
-  
+
   <div class="collapse mt-3" id="addStaffCard">
     <form action="/dashboard/staff/add" method="POST" class="card border-success">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -50,8 +50,13 @@
         <div class="col-md-4">
           <label class="form-label small font-weight-medium">Role</label>
           <select name="role" class="form-select form-select-sm" required>
-            <option value="staff">Staff (View Only)</option>
-            <option value="admin">Admin (Full Access)</option>
+            {% if user.role == 'super_admin' %}
+            <option value="user" selected>Regular Staff</option>
+            <option value="admin">Admin</option>
+            <option value="super_admin">Super Admin</option>
+            {% else %}
+            <option value="user" selected>Regular Staff</option>
+            {% endif %}
           </select>
         </div>
         <div class="col-md-4">
@@ -97,6 +102,7 @@
             <tr>
               <th>Name</th>
               <th>Email</th>
+              <th>Phone</th>
               <th>Role</th>
               <th>Status</th>
               <th>Last Login</th>
@@ -108,11 +114,14 @@
               <tr>
                 <td class="font-weight-medium text-dark">{{ member.name or 'N/A' }}</td>
                 <td>{{ member.email }}</td>
+                <td>{{ member.phone or '—' }}</td>
                 <td>
-                  {% if member.role == 'admin' %}
+                  {% if member.role == 'super_admin' %}
+                    <span class="badge bg-danger">Super Admin</span>
+                  {% elif member.role == 'admin' %}
                     <span class="badge bg-primary">Admin</span>
                   {% else %}
-                    <span class="badge bg-secondary">Staff</span>
+                    <span class="badge bg-secondary">Regular Staff</span>
                   {% endif %}
                 </td>
                 <td>
@@ -126,6 +135,20 @@
                 <td class="text-end pe-3">
                   <div class="d-flex gap-1 justify-content-end">
                     {% if member.email != user.get('email') %}
+                      {# Edit button — admin cannot edit super_admins #}
+                      {% if not (user.role == 'admin' and member.role == 'super_admin') %}
+                      <button type="button" class="btn btn-sm btn-outline-primary btn-edit-staff"
+                        data-id="{{ member.id }}"
+                        data-name="{{ member.name | e }}"
+                        data-email="{{ member.email | e }}"
+                        data-phone="{{ member.phone or '' | e }}"
+                        data-role="{{ member.role }}">
+                        <i class="bi bi-pencil"></i> Edit
+                      </button>
+                      {% endif %}
+
+                      {# Toggle active — admin cannot toggle admins/super_admins #}
+                      {% if user.role == 'super_admin' or (user.role == 'admin' and member.role == 'user') %}
                       <form action="/dashboard/staff/{{ member.id }}/toggle" method="POST" class="d-inline">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         {% if member.is_active %}
@@ -134,6 +157,7 @@
                           <button type="submit" class="btn btn-sm btn-outline-success">Activate</button>
                         {% endif %}
                       </form>
+                      {% endif %}
                     {% else %}
                       <span class="badge bg-light text-muted border me-1">You</span>
                     {% endif %}
@@ -153,6 +177,52 @@
         <p>No staff members found.</p>
       </div>
     {% endif %}
+  </div>
+</div>
+
+<!-- Edit Staff Modal -->
+<div class="modal fade" id="editStaffModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content border-primary">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title"><i class="bi bi-pencil-fill me-2"></i>Edit Staff Member</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" id="editStaffForm" action="">
+        <div class="modal-body">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <div class="mb-3">
+            <label class="form-label font-weight-medium">Full Name</label>
+            <input type="text" class="form-control" name="name" id="edit_name" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label font-weight-medium">Email</label>
+            <input type="email" class="form-control" name="email" id="edit_email" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label font-weight-medium">Phone</label>
+            <input type="text" class="form-control" name="phone" id="edit_phone">
+          </div>
+          <div class="mb-3">
+            <label class="form-label font-weight-medium">Role</label>
+            {% if user.role == 'super_admin' %}
+            <select name="role" id="edit_role" class="form-select">
+              <option value="user">Regular Staff</option>
+              <option value="admin">Admin</option>
+              <option value="super_admin">Super Admin</option>
+            </select>
+            {% else %}
+            <input type="text" class="form-control" id="edit_role_display" disabled>
+            <input type="hidden" name="role" id="edit_role" value="">
+            {% endif %}
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Save Changes</button>
+        </div>
+      </form>
+    </div>
   </div>
 </div>
 
@@ -198,7 +268,10 @@
 </div>
 
 <script>
+  const ROLE_LABELS = {'super_admin': 'Super Admin', 'admin': 'Admin', 'user': 'Regular Staff'};
+
   document.addEventListener('DOMContentLoaded', function() {
+    // Reset password modal
     document.querySelectorAll('.btn-reset-pw').forEach(function(btn) {
       btn.addEventListener('click', function() {
         document.getElementById('resetPasswordForm').action = '/dashboard/staff/' + btn.dataset.id + '/reset-password';
@@ -206,6 +279,27 @@
         document.getElementById('reset_new_password').value = '';
         document.getElementById('reset_confirm_password').value = '';
         new bootstrap.Modal(document.getElementById('resetPasswordModal')).show();
+      });
+    });
+
+    // Edit staff modal
+    document.querySelectorAll('.btn-edit-staff').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        document.getElementById('editStaffForm').action = '/dashboard/staff/' + btn.dataset.id + '/edit';
+        document.getElementById('edit_name').value = btn.dataset.name;
+        document.getElementById('edit_email').value = btn.dataset.email;
+        document.getElementById('edit_phone').value = btn.dataset.phone;
+
+        var roleSelect = document.getElementById('edit_role');
+        var roleDisplay = document.getElementById('edit_role_display');
+        if (roleSelect.tagName === 'SELECT') {
+          roleSelect.value = btn.dataset.role;
+        } else {
+          roleSelect.value = btn.dataset.role;
+          if (roleDisplay) roleDisplay.value = ROLE_LABELS[btn.dataset.role] || btn.dataset.role;
+        }
+
+        new bootstrap.Modal(document.getElementById('editStaffModal')).show();
       });
     });
   });

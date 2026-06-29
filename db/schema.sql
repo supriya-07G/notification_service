@@ -183,7 +183,7 @@ CREATE TABLE IF NOT EXISTS admin_users (
     password_hash TEXT NOT NULL,
     name TEXT DEFAULT '',
     phone TEXT,
-    role TEXT CHECK(role IN ('admin','staff')) DEFAULT 'staff',
+    role TEXT CHECK(role IN ('super_admin','admin','user')) DEFAULT 'user',
     is_active BOOLEAN DEFAULT TRUE,
     force_password_reset BOOLEAN DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

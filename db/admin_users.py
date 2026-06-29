@@ -94,7 +94,7 @@ def authenticate(email: str, password: str) -> dict | None:
             return {
                 "id": user_row["id"],
                 "email": email_clean,
-                "role": user_row["role"] or "staff",
+                "role": user_row["role"] or "user",
             }
 
         # Fallback: shared global password
@@ -131,7 +131,7 @@ def authenticate(email: str, password: str) -> dict | None:
             "SELECT id, role FROM admin_users WHERE email = ?", [email_clean]
         ).fetchone()
         user_id = user_row["id"] if user_row else 0
-        user_role = user_row["role"] if user_row and user_row["role"] else "staff"
+        user_role = user_row["role"] if user_row and user_row["role"] else "user"
 
         return {"id": user_id, "email": email_clean, "role": user_role}
     finally:
@@ -142,7 +142,7 @@ def get_or_create_staff_from_sso(conn, email: str, name: str) -> dict:
     """Return existing admin_users row or create a new one for SSO users.
 
     SSO users get:
-      - role = 'staff'
+      - role = 'user'
       - is_active = 1
       - force_password_reset = 0
       - hashed_password = random bcrypt (they will always use SSO)
@@ -163,7 +163,7 @@ def get_or_create_staff_from_sso(conn, email: str, name: str) -> dict:
             [row["id"]],
         )
         conn.commit()
-        return {"id": row["id"], "email": email_clean, "role": row["role"] or "staff"}
+        return {"id": row["id"], "email": email_clean, "role": row["role"] or "user"}
 
     # New SSO user — generate a random password hash they will never use
     random_password = secrets.token_hex(32)
@@ -172,7 +172,7 @@ def get_or_create_staff_from_sso(conn, email: str, name: str) -> dict:
     conn.execute(
         """INSERT INTO admin_users
                (email, name, password_hash, role, is_active, force_password_reset, last_login_at)
-           VALUES (?, ?, ?, 'staff', 1, 0, CURRENT_TIMESTAMP)""",
+           VALUES (?, ?, ?, 'user', 1, 0, CURRENT_TIMESTAMP)""",
         [email_clean, name, password_hash],
     )
     conn.commit()
@@ -180,4 +180,4 @@ def get_or_create_staff_from_sso(conn, email: str, name: str) -> dict:
         "SELECT id FROM admin_users WHERE email = ?", [email_clean]
     ).fetchone()["id"]
     logger.info("SSO: created new staff account for %s", email_clean)
-    return {"id": new_id, "email": email_clean, "role": "staff"}
+    return {"id": new_id, "email": email_clean, "role": "user"}

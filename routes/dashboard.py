@@ -21,6 +21,7 @@ from auth.session import (
     create_session_cookie,
     clear_session_cookie,
     require_login,
+    require_role,
     is_rate_limited,
     record_failed_attempt,
     clear_failed_attempts,
@@ -571,7 +572,7 @@ async def deliveries(request: Request, status: str = "", channel: str = "", star
     if redirect:
         return redirect
     user = get_current_user(request)
-    if not user or user.get("role") != "admin":
+    if not user or user.get("role") not in ("super_admin", "admin"):
         return RedirectResponse(url="/dashboard/", status_code=302)
 
     conn = get_connection()
@@ -658,8 +659,7 @@ async def export_deliveries_csv(
         return redirect
     user = get_current_user(request)
 
-    # Admin-only check
-    if not user or user.get("role") != "admin":
+    if not user or user.get("role") not in ("super_admin", "admin"):
         logger.warning("Non-admin user %s attempted CSV export", user.get("email") if user else "unknown")
         return RedirectResponse(url="/dashboard/deliveries", status_code=302)
 
@@ -833,7 +833,7 @@ async def settings_page(request: Request, saved: bool = False, password_success:
     if redirect:
         return redirect
     user = get_current_user(request)
-    if not user or user.get("role") != "admin":
+    if not user or user.get("role") not in ("super_admin", "admin"):
         return RedirectResponse(url="/dashboard/", status_code=302)
 
     conn = get_connection()
@@ -1167,7 +1167,7 @@ async def update_settings(
     if redirect:
         return redirect
     user = get_current_user(request)
-    if not user or user.get("role") != "admin":
+    if not user or user.get("role") not in ("super_admin", "admin"):
         return RedirectResponse(url="/dashboard/", status_code=302)
     if not validate_csrf_token(csrf_token):
         return RedirectResponse(url="/dashboard/settings?error=Invalid+CSRF+token", status_code=303)
@@ -1208,7 +1208,7 @@ async def update_global_password(
     if redirect:
         return redirect
     user = get_current_user(request)
-    if not user or user.get("role") != "admin":
+    if not user or user.get("role") not in ("super_admin", "admin"):
         return RedirectResponse(url="/dashboard/", status_code=302)
 
     from db.admin_users import validate_password_strength, hash_password
@@ -1254,8 +1254,8 @@ async def add_template(
     if redirect:
         return redirect
     user = get_current_user(request)
-    if not user or user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+    if not user or user.get("role") not in ("super_admin", "admin", "user"):
+        raise HTTPException(status_code=403, detail="Access denied")
     if not validate_csrf_token(csrf_token):
         return RedirectResponse(url="/dashboard/templates?error=Invalid+CSRF+token", status_code=303)
 
@@ -1289,7 +1289,7 @@ async def edit_template(
     if redirect:
         return redirect
     user = get_current_user(request)
-    if not user or user.get("role") != "admin":
+    if not user or user.get("role") not in ("super_admin", "admin"):
         return RedirectResponse(url="/dashboard/", status_code=302)
     if not validate_csrf_token(csrf_token):
         return RedirectResponse(url="/dashboard/templates?error=Invalid+CSRF+token", status_code=303)
@@ -1314,7 +1314,7 @@ async def delete_template(request: Request, id: int, csrf_token: str = Form(...)
     if redirect:
         return redirect
     user = get_current_user(request)
-    if not user or user.get("role") != "admin":
+    if not user or user.get("role") not in ("super_admin", "admin"):
         return RedirectResponse(url="/dashboard/", status_code=302)
     if not validate_csrf_token(csrf_token):
         return RedirectResponse(url="/dashboard/templates?error=Invalid+CSRF+token", status_code=303)
@@ -1352,7 +1352,7 @@ async def staff_list(request: Request):
         return redirect
     user = get_current_user(request)
 
-    if not user or user.get("role") != "admin":
+    if not user or user.get("role") not in ("super_admin", "admin"):
         return RedirectResponse(url="/dashboard/", status_code=302)
 
     conn = get_connection()
@@ -1381,12 +1381,12 @@ async def add_staff(
     email: str = Form(...),
     name: str = Form(...),
     phone: str = Form(""),
-    role: str = Form("staff"),
+    role: str = Form("user"),
     password: str = Form(...),
     password_confirm: str = Form(...),
     csrf_token: str = Form(...)
 ):
-    """Add a new staff member. Admin only."""
+    """Add a new staff member. Admin/Super Admin only."""
     redirect = require_login(request)
     if redirect:
         return redirect
@@ -1394,16 +1394,23 @@ async def add_staff(
         return RedirectResponse(url="/dashboard/staff?error=Invalid+CSRF+token", status_code=303)
     user = get_current_user(request)
 
-    if not user or user.get("role") != "admin":
+    if not user or user.get("role") not in ("super_admin", "admin"):
         return RedirectResponse(url="/dashboard/", status_code=302)
 
     from urllib.parse import urlencode
     email = email.strip().lower()
-    
+
+    # Admin can only add 'user' role; force it
+    if user["role"] == "admin":
+        role = "user"
+    # Super Admin can assign any role
+    if role not in ("super_admin", "admin", "user"):
+        role = "user"
+
     if not is_allowed_email(email):
         err = urlencode({"error": "Email must end with @ecosave-group.com"})
         return RedirectResponse(url=f"/dashboard/staff?{err}", status_code=303)
-        
+
     if password != password_confirm:
         err = urlencode({"error": "Passwords do not match."})
         return RedirectResponse(url=f"/dashboard/staff?{err}", status_code=303)
@@ -1448,7 +1455,7 @@ async def reset_staff_password(
     if not validate_csrf_token(csrf_token):
         return RedirectResponse(url="/dashboard/staff?error=Invalid+CSRF+token", status_code=303)
     user = get_current_user(request)
-    if not user or user.get("role") != "admin":
+    if not user or user.get("role") not in ("super_admin", "admin"):
         return RedirectResponse(url="/dashboard/", status_code=302)
 
     from urllib.parse import urlencode
@@ -1465,6 +1472,10 @@ async def reset_staff_password(
     conn = None
     try:
         conn = get_connection()
+        target = conn.execute("SELECT role FROM admin_users WHERE id = ?", [id]).fetchone()
+        if target and user["role"] == "admin" and target["role"] in ("admin", "super_admin"):
+            err = urlencode({"error": "Admins cannot reset passwords for other Admins or Super Admins."})
+            return RedirectResponse(url=f"/dashboard/staff?{err}", status_code=303)
         conn.execute("UPDATE admin_users SET password_hash = ? WHERE id = ?", [hashed, id])
         conn.commit()
     except Exception as e:
@@ -1488,24 +1499,174 @@ async def toggle_staff_status(request: Request, id: int, csrf_token: str = Form(
         return RedirectResponse(url="/dashboard/staff?error=Invalid+CSRF+token", status_code=303)
     user = get_current_user(request)
 
-    if not user or user.get("role") != "admin":
+    if not user or user.get("role") not in ("super_admin", "admin"):
         return RedirectResponse(url="/dashboard/", status_code=302)
 
+    from urllib.parse import urlencode
     conn = get_connection()
     try:
+        target = conn.execute("SELECT email, role, is_active FROM admin_users WHERE id = ?", [id]).fetchone()
+        if not target:
+            return RedirectResponse(url="/dashboard/staff?error=User+not+found", status_code=303)
+
         # Prevent deactivating oneself
-        target = conn.execute("SELECT email, is_active FROM admin_users WHERE id = ?", [id]).fetchone()
-        if target and target["email"] == user.get("email"):
+        if target["email"] == user.get("email"):
             err = urlencode({"error": "You cannot deactivate your own account."})
             return RedirectResponse(url=f"/dashboard/staff?{err}", status_code=303)
-            
-        if target:
-            new_status = 0 if target["is_active"] else 1
-            conn.execute("UPDATE admin_users SET is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [new_status, id])
-            conn.commit()
+
+        # Admin cannot deactivate admins or super_admins
+        if user["role"] == "admin" and target["role"] in ("admin", "super_admin"):
+            err = urlencode({"error": "Admins cannot deactivate other Admins or Super Admins."})
+            return RedirectResponse(url=f"/dashboard/staff?{err}", status_code=303)
+
+        new_status = 0 if target["is_active"] else 1
+        conn.execute("UPDATE admin_users SET is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [new_status, id])
+        conn.commit()
         return RedirectResponse(url="/dashboard/staff?success=true", status_code=303)
     finally:
         conn.close()
+
+@router.post("/staff/{id}/edit")
+async def edit_staff(
+    request: Request,
+    id: int,
+    name: str = Form(...),
+    email: str = Form(...),
+    phone: str = Form(""),
+    role: str = Form(""),
+    csrf_token: str = Form(...)
+):
+    """Edit a staff member. Admin/Super Admin only."""
+    redirect = require_login(request)
+    if redirect:
+        return redirect
+    if not validate_csrf_token(csrf_token):
+        return RedirectResponse(url="/dashboard/staff?error=Invalid+CSRF+token", status_code=303)
+    user = get_current_user(request)
+    if not user or user.get("role") not in ("super_admin", "admin"):
+        return RedirectResponse(url="/dashboard/", status_code=302)
+
+    from urllib.parse import urlencode
+    conn = get_connection()
+    try:
+        target = conn.execute("SELECT email, role FROM admin_users WHERE id = ?", [id]).fetchone()
+        if not target:
+            return RedirectResponse(url="/dashboard/staff?error=User+not+found", status_code=303)
+
+        # Admin cannot edit Super Admins
+        if user["role"] == "admin" and target["role"] == "super_admin":
+            err = urlencode({"error": "Admins cannot edit Super Admins."})
+            return RedirectResponse(url=f"/dashboard/staff?{err}", status_code=303)
+
+        # Only Super Admin can change roles
+        new_role = target["role"]
+        if role and role != target["role"]:
+            if user["role"] != "super_admin":
+                err = urlencode({"error": "Only Super Admins can change user roles."})
+                return RedirectResponse(url=f"/dashboard/staff?{err}", status_code=303)
+            if role in ("super_admin", "admin", "user"):
+                new_role = role
+
+        email_clean = email.strip().lower()
+        if not is_allowed_email(email_clean):
+            err = urlencode({"error": "Email must end with @ecosave-group.com"})
+            return RedirectResponse(url=f"/dashboard/staff?{err}", status_code=303)
+
+        conn.execute(
+            """UPDATE admin_users SET name = ?, email = ?, phone = ?, role = ?,
+               updated_at = CURRENT_TIMESTAMP WHERE id = ?""",
+            [name.strip(), email_clean, phone.strip() or None, new_role, id]
+        )
+        conn.commit()
+        return RedirectResponse(url="/dashboard/staff?success=true", status_code=303)
+    except Exception as e:
+        logger.error("Error editing staff id=%s: %s", id, e)
+        err = urlencode({"error": "An unexpected error occurred."})
+        return RedirectResponse(url=f"/dashboard/staff?{err}", status_code=303)
+    finally:
+        conn.close()
+
+
+# ── REGISTRATION ───────────────────────────────────────────────────────────
+
+@router.get("/register", response_class=HTMLResponse)
+async def register_page(request: Request):
+    """Public registration page."""
+    user = get_current_user(request)
+    if user:
+        return RedirectResponse(url="/dashboard/", status_code=302)
+    csrf_token = generate_csrf_token()
+    return templates.TemplateResponse(
+        "register.html",
+        {"request": request, "error": None, "csrf_token": csrf_token}
+    )
+
+
+@router.post("/register", response_class=HTMLResponse)
+async def register_submit(
+    request: Request,
+    name: str = Form(...),
+    email: str = Form(...),
+    phone: str = Form(...),
+    password: str = Form(...),
+    confirm_password: str = Form(...),
+    csrf_token: str = Form(""),
+):
+    """Process self-registration form."""
+    if not validate_csrf_token(csrf_token):
+        new_csrf = generate_csrf_token()
+        return templates.TemplateResponse(
+            "register.html",
+            {"request": request, "error": "Invalid request. Please try again.", "csrf_token": new_csrf}
+        )
+
+    email_clean = email.strip().lower()
+
+    if not is_allowed_email(email_clean):
+        new_csrf = generate_csrf_token()
+        return templates.TemplateResponse(
+            "register.html",
+            {"request": request, "error": "Must use an @ecosave-group.com email address.", "csrf_token": new_csrf}
+        )
+
+    if password != confirm_password:
+        new_csrf = generate_csrf_token()
+        return templates.TemplateResponse(
+            "register.html",
+            {"request": request, "error": "Passwords do not match.", "csrf_token": new_csrf}
+        )
+
+    pw_errors = validate_password_strength(password)
+    if pw_errors:
+        new_csrf = generate_csrf_token()
+        return templates.TemplateResponse(
+            "register.html",
+            {"request": request, "error": pw_errors[0], "csrf_token": new_csrf}
+        )
+
+    conn = get_connection()
+    try:
+        existing = conn.execute("SELECT id FROM admin_users WHERE email = ?", [email_clean]).fetchone()
+        if existing:
+            new_csrf = generate_csrf_token()
+            return templates.TemplateResponse(
+                "register.html",
+                {"request": request, "error": "This email is already registered.", "csrf_token": new_csrf}
+            )
+
+        hashed = hash_password(password)
+        conn.execute(
+            """INSERT INTO admin_users (email, password_hash, name, phone, role, is_active)
+               VALUES (?, ?, ?, ?, 'user', 1)""",
+            [email_clean, hashed, name.strip(), phone.strip() or None]
+        )
+        conn.commit()
+        logger.info("New self-registration: %s", email_clean)
+    finally:
+        conn.close()
+
+    return RedirectResponse(url="/dashboard/login?registered=true", status_code=302)
+
 
 # ── Template Editor API Endpoints ─────────────────────────────────────────
 
@@ -1533,8 +1694,8 @@ async def api_save_template(request: Request, id: int, data: dict = Body(...)):
     if redirect:
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     user = get_current_user(request)
-    if not user or user.get("role") != "admin":
-        return JSONResponse(status_code=403, content={"error": "Admin access required"})
+    if not user:
+        return JSONResponse(status_code=403, content={"error": "Access denied"})
     csrf = request.headers.get("X-CSRF-Token", "")
     if not validate_csrf_token(csrf):
         return JSONResponse(status_code=403, content={"error": "Invalid CSRF token"})
@@ -1556,8 +1717,8 @@ async def api_translate_template(request: Request, id: int, data: dict = Body(..
     if redirect:
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     user = get_current_user(request)
-    if not user or user.get("role") != "admin":
-        return JSONResponse(status_code=403, content={"error": "Admin access required"})
+    if not user:
+        return JSONResponse(status_code=403, content={"error": "Access denied"})
     csrf = request.headers.get("X-CSRF-Token", "")
     if not validate_csrf_token(csrf):
         return JSONResponse(status_code=403, content={"error": "Invalid CSRF token"})
@@ -1572,8 +1733,8 @@ async def api_revert_template(request: Request, id: int):
     if redirect:
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     user = get_current_user(request)
-    if not user or user.get("role") != "admin":
-        return JSONResponse(status_code=403, content={"error": "Admin access required"})
+    if not user:
+        return JSONResponse(status_code=403, content={"error": "Access denied"})
     csrf = request.headers.get("X-CSRF-Token", "")
     if not validate_csrf_token(csrf):
         return JSONResponse(status_code=403, content={"error": "Invalid CSRF token"})
@@ -1596,8 +1757,8 @@ async def api_test_send_template(request: Request, id: int, data: dict = Body(..
     if redirect:
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     user = get_current_user(request)
-    if not user or user.get("role") != "admin":
-        return JSONResponse(status_code=403, content={"error": "Admin access required"})
+    if not user:
+        return JSONResponse(status_code=403, content={"error": "Access denied"})
     csrf = request.headers.get("X-CSRF-Token", "")
     if not validate_csrf_token(csrf):
         return JSONResponse(status_code=403, content={"error": "Invalid CSRF token"})
@@ -1654,7 +1815,7 @@ async def api_get_alerts(request: Request):
     if redirect:
         return {"error": "Unauthorized"}
     user = get_current_user(request)
-    if not user or user.get("role") != "admin":
+    if not user or user.get("role") not in ("super_admin", "admin"):
         return {"error": "Unauthorized"}
 
     conn = get_connection()
@@ -1679,7 +1840,7 @@ async def api_save_alerts(request: Request, data: dict = Body(...)):
     if redirect:
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     user = get_current_user(request)
-    if not user or user.get("role") != "admin":
+    if not user or user.get("role") not in ("super_admin", "admin"):
         return JSONResponse(status_code=403, content={"error": "Unauthorized"})
     csrf = request.headers.get("X-CSRF-Token", "")
     if not validate_csrf_token(csrf):

@@ -8,7 +8,7 @@
     <h1 class="h2 text-dark font-weight-bold">Notification Deliveries</h1>
     <p class="text-muted">History of all sent SMS and email reminders.</p>
   </div>
-  {% if user is mapping and user.role == 'admin' %}
+  {% if user is mapping and user.role in ('super_admin', 'admin') %}
   <div class="col-md-4 d-flex justify-content-end align-items-center">
     <a href="/dashboard/deliveries/export?status={{ current_status or '' }}&channel={{ current_channel or '' }}&start_date={{ current_start_date or '' }}&end_date={{ current_end_date or '' }}" 
        class="btn btn-success" id="export-csv-btn">

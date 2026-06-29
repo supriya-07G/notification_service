@@ -107,12 +107,12 @@ def get_current_user(request: Request) -> Optional[dict]:
         email = data.get("email")
         if not email:
             return None
-        return {"email": email, "role": data.get("role", "staff")}
+        return {"email": email, "role": data.get("role", "user")}
     except (BadSignature, SignatureExpired):
         return None
 
 
-def create_session_cookie(response: Response, user_email: str, role: str = "staff") -> None:
+def create_session_cookie(response: Response, user_email: str, role: str = "user") -> None:
     """Sign the user email and role into a session token and set it as a cookie."""
     token = _serializer.dumps({"email": user_email, "role": role})
     response.set_cookie(
@@ -135,6 +135,19 @@ def clear_session_cookie(response: Response) -> None:
         samesite="lax",
         secure=SESSION_SECURE_COOKIE,
     )
+
+
+def require_role(request: Request, allowed_roles: list[str]) -> Optional[RedirectResponse]:
+    """Check if the user has one of the allowed roles.
+
+    Returns a RedirectResponse if not authenticated or not authorized, or None if OK.
+    """
+    user = get_current_user(request)
+    if user is None:
+        return RedirectResponse(url="/dashboard/login", status_code=302)
+    if user["role"] not in allowed_roles:
+        return RedirectResponse(url="/dashboard/", status_code=302)
+    return None
 
 
 def require_login(request: Request) -> Optional[RedirectResponse]:

@@ -3,15 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sign In - EcoSave Dashboard</title>
-  <meta name="description" content="Sign in to the EcoSave Notification Dashboard">
-  <!-- Google Fonts: Inter -->
+  <title>Create Account - EcoSave Dashboard</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <!-- Bootstrap 5 CSS CDN -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <!-- Bootstrap Icons CDN -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-  
   <style>
     :root {
       --primary-green: #2e7d32;
@@ -21,7 +16,6 @@
       --accent-green: #81c784;
       --dark-green: #1b5e20;
     }
-    
     body {
       font-family: 'Inter', sans-serif;
       background: linear-gradient(135deg, var(--very-light-green) 0%, #c8e6c9 50%, var(--accent-green) 100%);
@@ -29,55 +23,32 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      padding: 2rem 0;
     }
-    
-    .login-card {
+    .register-card {
       width: 100%;
-      max-width: 420px;
+      max-width: 460px;
       border: none;
       border-radius: 16px;
       box-shadow: 0 20px 60px rgba(46, 125, 50, 0.15), 0 4px 12px rgba(0,0,0,0.08);
       overflow: hidden;
     }
-    
-    .login-header {
+    .register-header {
       background: linear-gradient(135deg, var(--primary-green), var(--secondary-green));
       padding: 2rem 2rem 1.5rem;
       text-align: center;
     }
-    
-    .login-header .logo-img {
+    .register-header .logo-img {
       height: 48px;
       background: white;
       padding: 6px;
       border-radius: 8px;
       margin-bottom: 1rem;
     }
-    
-    .login-header h1 {
-      color: white;
-      font-size: 1.4rem;
-      font-weight: 600;
-      margin-bottom: 0.25rem;
-    }
-    
-    .login-header p {
-      color: rgba(255,255,255,0.8);
-      font-size: 0.85rem;
-      margin-bottom: 0;
-    }
-    
-    .login-body {
-      padding: 2rem;
-      background: white;
-    }
-    
-    .form-label {
-      font-weight: 500;
-      color: #333;
-      font-size: 0.875rem;
-    }
-    
+    .register-header h1 { color: white; font-size: 1.4rem; font-weight: 600; margin-bottom: 0.25rem; }
+    .register-header p { color: rgba(255,255,255,0.8); font-size: 0.85rem; margin-bottom: 0; }
+    .register-body { padding: 2rem; background: white; }
+    .form-label { font-weight: 500; color: #333; font-size: 0.875rem; }
     .form-control {
       border-radius: 8px;
       border: 1.5px solid #e0e0e0;
@@ -85,186 +56,145 @@
       font-size: 0.9rem;
       transition: border-color 0.2s ease, box-shadow 0.2s ease;
     }
-    
     .form-control:focus {
       border-color: var(--light-green);
       box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.15);
     }
-    
-    .btn-login {
+    .btn-register {
       background: linear-gradient(135deg, var(--primary-green), var(--secondary-green));
-      border: none;
-      border-radius: 8px;
-      padding: 0.65rem;
-      font-weight: 600;
-      font-size: 0.95rem;
-      color: white;
+      border: none; border-radius: 8px; padding: 0.65rem;
+      font-weight: 600; font-size: 0.95rem; color: white;
       transition: all 0.2s ease;
     }
-    
-    .btn-login:hover {
+    .btn-register:hover {
       background: linear-gradient(135deg, var(--dark-green), var(--primary-green));
-      color: white;
-      transform: translateY(-1px);
+      color: white; transform: translateY(-1px);
       box-shadow: 0 4px 12px rgba(46, 125, 50, 0.3);
     }
-    
-    .domain-hint {
-      color: #999;
-      font-size: 0.78rem;
-      margin-top: 0.25rem;
+    .domain-hint { color: #999; font-size: 0.78rem; margin-top: 0.25rem; }
+    .alert { border-radius: 8px; font-size: 0.875rem; }
+    .register-footer {
+      background: #fafafa; padding: 1rem 2rem;
+      text-align: center; border-top: 1px solid #f0f0f0;
     }
-    
-    .alert {
-      border-radius: 8px;
-      font-size: 0.875rem;
-    }
-    
-    .login-footer {
-      background: #fafafa;
-      padding: 1rem 2rem;
-      text-align: center;
-      border-top: 1px solid #f0f0f0;
-    }
-    
-    .login-footer span {
-      color: #999;
-      font-size: 0.78rem;
-    }
-    
+    .register-footer span { color: #999; font-size: 0.78rem; }
     .input-group-text {
       background: var(--very-light-green);
       border-color: #e0e0e0;
       color: var(--primary-green);
     }
-
     .divider-or {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      margin: 1.25rem 0;
-      color: #bbb;
-      font-size: 0.8rem;
+      display: flex; align-items: center; gap: 0.75rem;
+      margin: 1.25rem 0; color: #bbb; font-size: 0.8rem;
     }
-    .divider-or::before,
-    .divider-or::after {
-      content: '';
-      flex: 1;
-      height: 1px;
-      background: #e8e8e8;
+    .divider-or::before, .divider-or::after {
+      content: ''; flex: 1; height: 1px; background: #e8e8e8;
     }
-
     .btn-google {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.6rem;
-      width: 100%;
-      padding: 0.6rem 1rem;
-      background: white;
-      border: 1.5px solid #e0e0e0;
-      border-radius: 8px;
-      font-size: 0.9rem;
-      font-weight: 500;
-      color: #444;
-      cursor: pointer;
-      transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.15s ease;
+      display: flex; align-items: center; justify-content: center; gap: 0.6rem;
+      width: 100%; padding: 0.6rem 1rem; background: white;
+      border: 1.5px solid #e0e0e0; border-radius: 8px;
+      font-size: 0.9rem; font-weight: 500; color: #444;
+      cursor: pointer; transition: border-color 0.2s ease, box-shadow 0.2s ease;
       text-decoration: none;
     }
     .btn-google:hover {
-      border-color: #aaa;
-      background: #fafafa;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-      color: #333;
-    }
-    .btn-google svg {
-      flex-shrink: 0;
+      border-color: #aaa; background: #fafafa;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08); color: #333;
     }
   </style>
 </head>
 <body>
-  <div class="login-card card">
-    <!-- Header -->
-    <div class="login-header">
+  <div class="register-card card">
+    <div class="register-header">
       <img src="/dashboard/logo_clean.png" alt="EcoSave" class="logo-img">
-      <h1>EcoSave Notifications</h1>
-      <p>Sign in to access the admin dashboard</p>
+      <h1>Create Your Account</h1>
+      <p>Join the EcoSave Notification Dashboard</p>
     </div>
-    
-    <!-- Body -->
-    <div class="login-body">
-      {% if request.query_params.get('registered') %}
-        <div class="alert alert-success d-flex align-items-center mb-3" role="alert">
-          <i class="bi bi-check-circle-fill me-2"></i>
-          <div>Account created successfully! Please sign in.</div>
-        </div>
-      {% endif %}
+
+    <div class="register-body">
       {% if error %}
         <div class="alert alert-danger d-flex align-items-center mb-3" role="alert">
           <i class="bi bi-exclamation-triangle-fill me-2"></i>
           <div>{{ error }}</div>
         </div>
       {% endif %}
-      {% set sso_error = request.query_params.get('error') %}
-      {% if sso_error and not error %}
-        <div class="alert alert-danger d-flex align-items-center mb-3" role="alert">
-          <i class="bi bi-exclamation-triangle-fill me-2"></i>
-          <div>{{ sso_error }}</div>
-        </div>
-      {% endif %}
-      
-      {% if rate_limited %}
-        <div class="alert alert-warning d-flex align-items-center mb-3" role="alert">
-          <i class="bi bi-clock-fill me-2"></i>
-          <div>Too many failed attempts. Try again in 15 minutes.</div>
-        </div>
-      {% endif %}
-      
-      <form method="POST" action="/dashboard/login" id="loginForm">
+
+      <form method="POST" action="/dashboard/register">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        
+
+        <div class="mb-3">
+          <label for="name" class="form-label">Full Name</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
+            <input type="text" class="form-control" id="name" name="name" required autofocus>
+          </div>
+        </div>
+
         <div class="mb-3">
           <label for="email" class="form-label">Email Address</label>
           <div class="input-group">
             <span class="input-group-text"><i class="bi bi-envelope-fill"></i></span>
-            <input type="email" class="form-control" id="email" name="email" 
-                   placeholder="name@ecosave-group.com" required autocomplete="email"
-                   {% if not rate_limited %}autofocus{% endif %}>
+            <input type="email" class="form-control" id="email" name="email"
+                   placeholder="name@ecosave-group.com" required autocomplete="email">
           </div>
           <div class="domain-hint">Must be an @ecosave-group.com address</div>
         </div>
-        
-        <div class="mb-4">
+
+        <div class="mb-3">
+          <label for="phone" class="form-label">Phone Number</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-telephone-fill"></i></span>
+            <input type="tel" class="form-control" id="phone" name="phone" required>
+          </div>
+        </div>
+
+        <div class="mb-3">
           <label for="password" class="form-label">Password</label>
           <div class="input-group">
             <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
-            <input type="password" class="form-control" id="password" name="password" 
-                   placeholder="Enter your password" required autocomplete="current-password">
-            <button class="btn btn-outline-secondary bg-white border-start-0" type="button" onclick="toggleVisibility('password', 'toggleIcon')">
-              <i class="bi bi-eye-fill text-muted" id="toggleIcon"></i>
+            <input type="password" class="form-control" id="password" name="password"
+                   placeholder="12+ characters" required autocomplete="new-password">
+            <button class="btn btn-outline-secondary bg-white border-start-0" type="button" onclick="toggleVisibility('password', 'toggleIcon1')">
+              <i class="bi bi-eye-fill text-muted" id="toggleIcon1"></i>
+            </button>
+          </div>
+          <div class="domain-hint">Min 12 chars with upper, lower, number, and special character</div>
+        </div>
+
+        <div class="mb-4">
+          <label for="confirm_password" class="form-label">Confirm Password</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+            <input type="password" class="form-control" id="confirm_password" name="confirm_password"
+                   required autocomplete="new-password">
+            <button class="btn btn-outline-secondary bg-white border-start-0" type="button" onclick="toggleVisibility('confirm_password', 'toggleIcon2')">
+              <i class="bi bi-eye-fill text-muted" id="toggleIcon2"></i>
             </button>
           </div>
         </div>
-        
-        <button type="submit" class="btn btn-login w-100" id="loginButton"
-                {% if rate_limited %}disabled{% endif %}>
-          <i class="bi bi-box-arrow-in-right me-1"></i> Sign In
+
+        <button type="submit" class="btn btn-register w-100">
+          <i class="bi bi-person-plus me-1"></i> Create Account
         </button>
       </form>
 
       <div class="divider-or">or</div>
 
-      <a href="/auth/google/login" class="btn-google" {% if rate_limited %}style="pointer-events:none;opacity:.5;"{% endif %}>
-        <!-- Google "G" logo SVG -->
+      <a href="/auth/google/login" class="btn-google">
         <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
           <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
           <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
           <path d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z" fill="#FBBC05"/>
           <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
         </svg>
-        Sign in with Google
+        Sign up with Google
       </a>
-      
+
+      <div class="text-center mt-3">
+        <a href="/dashboard/login" style="color: #388e3c; font-size: 0.9rem;">Already have an account? Sign In</a>
+      </div>
+
       <script>
         function toggleVisibility(inputId, iconId) {
           const input = document.getElementById(inputId);
@@ -281,19 +211,12 @@
         }
       </script>
     </div>
-    
-    <!-- Register link -->
-    <div style="padding: 0.75rem 2rem; text-align: center; background: #fafafa; border-top: 1px solid #f0f0f0;">
-      <a href="/dashboard/register" style="color: #388e3c; font-size: 0.88rem; font-weight: 500;">Don't have an account? Create one</a>
-    </div>
 
-    <!-- Footer -->
-    <div class="login-footer">
+    <div class="register-footer">
       <span>&copy; 2026 EcoSave Home Solutions. All rights reserved.</span>
     </div>
   </div>
-  
-  <!-- Bootstrap 5 Bundle JS CDN -->
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
