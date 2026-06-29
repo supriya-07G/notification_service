@@ -21,3 +21,13 @@ project-documentation.html
 GOOGLE_SSO_SETUP.md
 *.sqlite
 *.log
+# Backup files
+.env.backup-*
+.env.save
+
+# Log directory
+logs/
+
+# Garbage/leftover files
+"hboard and webhook server\""
+
