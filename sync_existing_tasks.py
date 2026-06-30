@@ -29,9 +29,10 @@ LIST_ID   = "901317175958"
 API_TOKEN = config.CLICKUP_API_TOKEN
 PAGE_SIZE = 100
 
-CLICKUP_FIELD_PHONE = "dd2505b0-b8ef-43cb-a730-4193efe7b664"
-CLICKUP_FIELD_EMAIL = "333855a2-a98b-4fe9-b951-a9fd075c46d1"
-CLICKUP_FIELD_SCOPE = "50870f6d-1fa0-4cbc-af66-119a3de6d4b7"
+CLICKUP_FIELD_NAME = config.CLICKUP_FIELD_NAME
+CLICKUP_FIELD_PHONE = config.CLICKUP_FIELD_PHONE
+CLICKUP_FIELD_EMAIL = config.CLICKUP_FIELD_EMAIL
+CLICKUP_FIELD_SCOPE = config.CLICKUP_FIELD_SCOPE
 CLICKUP_FIELD_PROGRAM = "8fcd3ac4-8323-4f09-8826-c5d8e96fbd46"
 
 SCOPE_LABELS = {
@@ -67,27 +68,27 @@ SCOPE_LABELS = {
 }
 
 SERVICE_DATE_MAP = {
-    "Heat Pump": "8454f592-135c-4fed-b40e-7711da85a641",
-    "Mini-Split": "8454f592-135c-4fed-b40e-7711da85a641",
-    "HVAC": "8454f592-135c-4fed-b40e-7711da85a641",
-    "Central AC": "8454f592-135c-4fed-b40e-7711da85a641",
-    "Air Handler": "8454f592-135c-4fed-b40e-7711da85a641",
-    "Insulation": "7cec17d3-97b2-4c8f-814c-bc0e94b9ba3d",
-    "Attic Insulation": "7cec17d3-97b2-4c8f-814c-bc0e94b9ba3d",
-    "Wall Insulation": "7cec17d3-97b2-4c8f-814c-bc0e94b9ba3d",
-    "Basement Insulation": "7cec17d3-97b2-4c8f-814c-bc0e94b9ba3d",
-    "Electrical": "9cfaccdd-707a-4eeb-9a0a-9806066dbb20",
-    "Electrical Upgrade": "9cfaccdd-707a-4eeb-9a0a-9806066dbb20",
-    "Main Panel Upgrade": "9cfaccdd-707a-4eeb-9a0a-9806066dbb20",
-    "EV Charger": "9cfaccdd-707a-4eeb-9a0a-9806066dbb20",
-    "Energy Assessment": "86b8c3a8-5405-4dbf-a74f-47ff510904c0",
-    "Vermiculite": "61f3ff62-d911-4a23-9779-640d331f79ce",
-    "Asbestos Remediation": "61f3ff62-d911-4a23-9779-640d331f79ce",
-    "Mold Remediation": "61f3ff62-d911-4a23-9779-640d331f79ce",
-    "Solar": "e55a9e51-7d2d-4107-8768-7a38ae37935e",
-    "Roof": "8bc34e30-389e-4c49-b3d9-4cdca522f8a2",
-    "Roof Repair": "8bc34e30-389e-4c49-b3d9-4cdca522f8a2",
-    "Roof Replacement": "8bc34e30-389e-4c49-b3d9-4cdca522f8a2",
+    "HVAC": config.CLICKUP_FIELD_DATE_HVAC,
+    "Heat Pump": config.CLICKUP_FIELD_DATE_HVAC,
+    "Mini-Split": config.CLICKUP_FIELD_DATE_HVAC,
+    "Central AC": config.CLICKUP_FIELD_DATE_HVAC,
+    "Air Handler": config.CLICKUP_FIELD_DATE_HVAC,
+    "Insulation": config.CLICKUP_FIELD_DATE_INSULATION,
+    "Attic Insulation": config.CLICKUP_FIELD_DATE_INSULATION,
+    "Wall Insulation": config.CLICKUP_FIELD_DATE_INSULATION,
+    "Basement Insulation": config.CLICKUP_FIELD_DATE_INSULATION,
+    "Electrical": config.CLICKUP_FIELD_DATE_ELECTRICAL,
+    "Electrical Upgrade": config.CLICKUP_FIELD_DATE_ELECTRICAL,
+    "Main Panel Upgrade": config.CLICKUP_FIELD_DATE_ELECTRICAL,
+    "EV Charger": config.CLICKUP_FIELD_DATE_ELECTRICAL,
+    "Energy Assessment": config.CLICKUP_FIELD_DATE_ASSESSMENT,
+    "Vermiculite": config.CLICKUP_FIELD_DATE_REMEDIATION,
+    "Asbestos Remediation": config.CLICKUP_FIELD_DATE_REMEDIATION,
+    "Mold Remediation": config.CLICKUP_FIELD_DATE_REMEDIATION,
+    "Solar": config.CLICKUP_FIELD_DATE_SOLAR,
+    "Roof": config.CLICKUP_FIELD_DATE_ROOF,
+    "Roof Repair": config.CLICKUP_FIELD_DATE_ROOF,
+    "Roof Replacement": config.CLICKUP_FIELD_DATE_ROOF,
 }
 
 stats = {"fetched": 0, "inserted": 0, "updated": 0, "quarantined": 0, "skipped": 0, "resolved": 0, "orphaned_cleaned": 0}
@@ -201,9 +202,11 @@ def process_task(task: dict, conn: sqlite3.Connection) -> str | None:
 
     # 1. Extract Core Fields
     parts = task_name.split('|')
-    customer_name = parts[0].strip() if parts[0].strip() else None
+    customer_name = _get_text_field(custom_fields, CLICKUP_FIELD_NAME)
+    if not customer_name:
+        customer_name = parts[0].strip() if parts[0].strip() else None
     location = parts[1].strip() if len(parts) > 1 else None
-        
+
     raw_phone = _get_text_field(custom_fields, CLICKUP_FIELD_PHONE)
     customer_email = _get_text_field(custom_fields, CLICKUP_FIELD_EMAIL)
     

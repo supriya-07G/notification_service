@@ -4,6 +4,7 @@ POST /webhooks/clickup   — receives ClickUp task webhooks
 GET  /webhooks/clickup/health — health check
 """
 
+import json
 import logging
 
 from fastapi import APIRouter, Request, Response
@@ -34,9 +35,9 @@ async def handle_clickup_webhook(request: Request):
         return Response(content='{"error": "invalid signature"}', status_code=403,
                         media_type="application/json")
 
-    # Parse payload
+    # Parse payload from the verified raw body
     try:
-        payload = await request.json()
+        payload = json.loads(raw_body.decode("utf-8"))
     except Exception as e:
         logger.error("Failed to parse ClickUp webhook JSON: %s", e)
         return Response(content='{"status": "ok"}', status_code=200,

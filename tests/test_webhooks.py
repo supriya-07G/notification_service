@@ -9,6 +9,9 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
+import config
+from adapters import clickup_webhook
+
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -216,3 +219,33 @@ class TestTwilioSignatureValidation:
             },
         )
         assert resp.status_code == 403
+
+
+class TestClickUpWebhookIdempotency:
+    def test_payload_without_history_items_is_deduped_by_payload_hash(self, non_closing_db):
+        """Webhook events without history_items should use a stable hash-based id."""
+        payload = {
+            "event": "taskCreated",
+            "task": {
+                "id": "task-123",
+                "name": "Jane Doe | 123 Main St",
+                "description": "",
+                "custom_fields": [
+                    {"id": config.CLICKUP_FIELD_NAME, "value": "Jane Doe"},
+                    {"id": config.CLICKUP_FIELD_PHONE, "value": "+1 617-555-0143"},
+                    {"id": config.CLICKUP_FIELD_EMAIL, "value": "jane@example.com"},
+                    {
+                        "id": config.CLICKUP_FIELD_SCOPE,
+                        "value": ["4ddeb225-8a97-43e2-b13f-76e1ceba2421"],
+                    },
+                    {"id": config.CLICKUP_FIELD_DATE_HVAC, "value": 1735689600000},
+                ],
+            },
+        }
+
+        with patch("adapters.clickup_webhook.get_connection", return_value=non_closing_db):
+            first = clickup_webhook.process_webhook(payload)
+            second = clickup_webhook.process_webhook(payload)
+
+        assert first["action"] == "created"
+        assert second["action"] == "duplicate"

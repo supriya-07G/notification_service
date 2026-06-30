@@ -45,12 +45,7 @@ FIELD_SCOPE_OF_WORK  = config.CLICKUP_FIELD_SCOPE  # ⭐ Scope Of Work (Complete
 SCOPE_LABELS: dict[str, str] = {
     "4ddeb225-8a97-43e2-b13f-76e1ceba2421": "HVAC",
     "696b02c7-0ba1-4db9-88a8-d2046a34f988": "Heat Pump",
-    "029b2cc2-32aa-45b5-a958-0fa46f96ffd4": "Mini-Split",
-    "9d46ddb7-f097-4937-a3c1-1a3dcf837db6": "Central AC",
     "e7c41b98-904a-49a1-aeac-869689de714e": "Insulation",
-    "c80f8596-414b-4cf0-89e9-dccf51124535": "Attic Insulation",
-    "fbc67cca-743f-475d-9fe2-1f601e11de4b": "Wall Insulation",
-    "cada0c3d-2e55-4e57-9190-a56b4a9286a2": "Basement Insulation",
     "37b1a40a-8ada-4365-b788-335dd400dcab": "Electrical Upgrade",
     "bcf515dc-72b3-4fa0-a9fa-438493457ab8": "Electrical",
     "af3f18c2-20b1-43f5-9e06-5095b367186c": "Main Panel Upgrade",
@@ -80,38 +75,30 @@ SCOPE_LABELS: dict[str, str] = {
 }
 
 # ── Service → Date Field mapping ───────────────────────────────────────────
-# Maps each scope-of-work label (lowercase) to its corresponding date field ID.
+# Maps each scope-of-work label as it appears in ClickUp to its corresponding date field ID.
 # First match wins when a task has multiple services selected.
 _SERVICE_DATE_FIELD_MAP: dict[str, str] = {
-    # HVAC / Heat Pump
-    "heat pump":            config.CLICKUP_FIELD_DATE_HVAC,
-    "mini-split":           config.CLICKUP_FIELD_DATE_HVAC,
-    "mini split":           config.CLICKUP_FIELD_DATE_HVAC,
-    "hvac":                 config.CLICKUP_FIELD_DATE_HVAC,
-    "central ac":           config.CLICKUP_FIELD_DATE_HVAC,
-    "air handler":          config.CLICKUP_FIELD_DATE_HVAC,
-    # Insulation
-    "insulation":           config.CLICKUP_FIELD_DATE_INSULATION,
-    "attic insulation":     config.CLICKUP_FIELD_DATE_INSULATION,
-    "wall insulation":      config.CLICKUP_FIELD_DATE_INSULATION,
-    "basement insulation":  config.CLICKUP_FIELD_DATE_INSULATION,
-    # Electrical
-    "electrical":           config.CLICKUP_FIELD_DATE_ELECTRICAL,
-    "electrical upgrade":   config.CLICKUP_FIELD_DATE_ELECTRICAL,
-    "main panel":           config.CLICKUP_FIELD_DATE_ELECTRICAL,
-    "ev charger":           config.CLICKUP_FIELD_DATE_ELECTRICAL,
-    # Energy Assessment
-    "energy assessment":    config.CLICKUP_FIELD_DATE_ASSESSMENT,
-    # Remediation
-    "vermiculite":          config.CLICKUP_FIELD_DATE_REMEDIATION,
-    "asbestos":             config.CLICKUP_FIELD_DATE_REMEDIATION,
-    "mold remediation":     config.CLICKUP_FIELD_DATE_REMEDIATION,
-    # Solar
-    "solar":                config.CLICKUP_FIELD_DATE_SOLAR,
-    # Roof
-    "roof":                 config.CLICKUP_FIELD_DATE_ROOF,
-    "roof repair":          config.CLICKUP_FIELD_DATE_ROOF,
-    "roof replacement":     config.CLICKUP_FIELD_DATE_ROOF,
+    "HVAC": config.CLICKUP_FIELD_DATE_HVAC,
+    "Heat Pump": config.CLICKUP_FIELD_DATE_HVAC,
+    "Mini-Split": config.CLICKUP_FIELD_DATE_HVAC,
+    "Central AC": config.CLICKUP_FIELD_DATE_HVAC,
+    "Air Handler": config.CLICKUP_FIELD_DATE_HVAC,
+    "Insulation": config.CLICKUP_FIELD_DATE_INSULATION,
+    "Attic Insulation": config.CLICKUP_FIELD_DATE_INSULATION,
+    "Wall Insulation": config.CLICKUP_FIELD_DATE_INSULATION,
+    "Basement Insulation": config.CLICKUP_FIELD_DATE_INSULATION,
+    "Electrical": config.CLICKUP_FIELD_DATE_ELECTRICAL,
+    "Electrical Upgrade": config.CLICKUP_FIELD_DATE_ELECTRICAL,
+    "Main Panel Upgrade": config.CLICKUP_FIELD_DATE_ELECTRICAL,
+    "EV Charger": config.CLICKUP_FIELD_DATE_ELECTRICAL,
+    "Energy Assessment": config.CLICKUP_FIELD_DATE_ASSESSMENT,
+    "Vermiculite": config.CLICKUP_FIELD_DATE_REMEDIATION,
+    "Asbestos Remediation": config.CLICKUP_FIELD_DATE_REMEDIATION,
+    "Mold Remediation": config.CLICKUP_FIELD_DATE_REMEDIATION,
+    "Solar": config.CLICKUP_FIELD_DATE_SOLAR,
+    "Roof": config.CLICKUP_FIELD_DATE_ROOF,
+    "Roof Repair": config.CLICKUP_FIELD_DATE_ROOF,
+    "Roof Replacement": config.CLICKUP_FIELD_DATE_ROOF,
 }
 
 # Fallback date field when no scope match found
@@ -278,7 +265,7 @@ def _resolve_date_field(service_labels: list[str]) -> str:
     in the service→date map. Falls back to HVAC date field.
     """
     for label in service_labels:
-        field_id = _SERVICE_DATE_FIELD_MAP.get(label.lower().strip())
+        field_id = _SERVICE_DATE_FIELD_MAP.get(label.strip())
         if field_id:
             return field_id
     return _DEFAULT_DATE_FIELD
@@ -339,9 +326,11 @@ def _extract_appointment_data(payload: dict) -> dict:
     task_description = (task.get("description") or "").strip()
     custom_fields    = task.get("custom_fields", [])
 
-    # Extract customer name and location from task name (split on first pipe)
+    # Extract customer name from the dedicated field when present; otherwise fall back to the task title.
     parts = task_name.split('|')
-    customer_name = parts[0].strip() if parts[0].strip() else None
+    customer_name = _get_text_field(custom_fields, FIELD_CUSTOMER_NAME)
+    if not customer_name:
+        customer_name = parts[0].strip() if parts[0].strip() else None
     location = parts[1].strip() if len(parts) > 1 else None
 
     # ── Phone & Email (extraction unchanged — was already working correctly)
@@ -386,16 +375,21 @@ def process_webhook(payload: dict) -> dict:
         logger.debug("Ignoring ClickUp event type: %s", event)
         return {"status": "ok", "action": "skipped", "reason": f"ignored event: {event}"}
 
-    history_items     = payload.get("history_items", [])
-    history_id        = history_items[0].get("id", "") if history_items else str(int(time.time()))
-    task_data         = payload.get("task", payload)
-    task_id           = task_data.get("id", "")
+    history_items = payload.get("history_items", [])
+    if history_items:
+        event_id = history_items[0].get("id", "")
+    else:
+        payload_hash = hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()[:16]
+        event_id = f"hash_{payload_hash}"
+
+    task_data = payload.get("task", payload)
+    task_id = task_data.get("id", "")
 
     if not task_id:
         logger.warning("ClickUp webhook missing task_id — skipping")
         return {"status": "ok", "action": "skipped", "reason": "no task_id"}
 
-    external_event_id = f"{task_id}_{history_id}"
+    external_event_id = f"{task_id}_{event_id}"
 
     conn = get_connection()
     try:

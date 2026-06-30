@@ -61,12 +61,12 @@ CLICKUP_FIELD_PHONE   = os.getenv(
     "CLICKUP_FIELD_PHONE", "dd2505b0-b8ef-43cb-a730-4193efe7b664"
 )  # ⭐ Phone
 CLICKUP_FIELD_EMAIL   = os.getenv(
-    "CLICKUP_FIELD_EMAIL", "333855a2-a98b-4fe9-b951-a9fd075c46d1"
+    "CLICKUP_FIELD_EMAIL", "0f154b73-ffe2-41f8-9028-818633e8d5bf"
 )  # ⭐ Email
 
 # Service type (what the customer is getting — multi-select)
 CLICKUP_FIELD_SCOPE   = os.getenv(
-    "CLICKUP_FIELD_SCOPE", "50870f6d-1fa0-4cbc-af66-119a3de6d4b7"
+    "CLICKUP_FIELD_SCOPE", "34fa9090-98fc-4ae6-be6a-2da9c688c018"
 )  # ⭐ Scope Of Work (Complete)
 
 # Service-specific date fields (each service has its own date field)
@@ -89,7 +89,7 @@ CLICKUP_FIELD_DATE_SOLAR       = os.getenv(
     "CLICKUP_FIELD_DATE_SOLAR", "e55a9e51-7d2d-4107-8768-7a38ae37935e"
 )  # ⭐ Install Date (Solar)
 CLICKUP_FIELD_DATE_ROOF        = os.getenv(
-    "CLICKUP_FIELD_DATE_ROOF", "8bc34e30-389e-4c49-b3d9-4cdca522f8a2"
+    "CLICKUP_FIELD_DATE_ROOF", "e55a9e51-7d2d-4107-8768-7a38ae37935e"
 )  # ✅ Site Visit Date (Roof)
 
 # Payment method — internal use only, not shown to customers
