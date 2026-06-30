@@ -1586,6 +1586,42 @@ async def edit_staff(
     finally:
         conn.close()
 
+@router.post("/staff/{id}/delete")
+async def delete_staff(request: Request, id: int, csrf_token: str = Form(...)):
+    """Delete a staff member. Super Admin only."""
+    redirect = require_login(request)
+    if redirect:
+        return redirect
+    if not validate_csrf_token(csrf_token):
+        return RedirectResponse(url="/dashboard/staff?error=Invalid+CSRF+token", status_code=303)
+    user = get_current_user(request)
+
+    if not user or user.get("role") != "super_admin":
+        err = urlencode({"error": "Only Super Admins can delete staff members."})
+        return RedirectResponse(url=f"/dashboard/staff?{err}", status_code=303)
+
+    from urllib.parse import urlencode
+    conn = get_connection()
+    try:
+        target = conn.execute("SELECT email, role FROM admin_users WHERE id = ?", [id]).fetchone()
+        if not target:
+            return RedirectResponse(url="/dashboard/staff?error=User+not+found", status_code=303)
+
+        # Prevent deleting oneself
+        if target["email"] == user.get("email"):
+            err = urlencode({"error": "You cannot delete your own account."})
+            return RedirectResponse(url=f"/dashboard/staff?{err}", status_code=303)
+
+        conn.execute("DELETE FROM admin_users WHERE id = ?", [id])
+        conn.commit()
+        return RedirectResponse(url="/dashboard/staff?success=true", status_code=303)
+    except Exception as e:
+        logger.error("Error deleting staff id=%s: %s", id, e)
+        err = urlencode({"error": "An unexpected error occurred."})
+        return RedirectResponse(url=f"/dashboard/staff?{err}", status_code=303)
+    finally:
+        conn.close()
+
 
 # ── REGISTRATION ───────────────────────────────────────────────────────────
 

@@ -158,6 +158,14 @@
                         {% endif %}
                       </form>
                       {% endif %}
+
+                      {# Delete button — super_admin only #}
+                      {% if user.role == 'super_admin' %}
+                      <form action="/dashboard/staff/{{ member.id }}/delete" method="POST" class="d-inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Permanently delete {{ member.email }}? This cannot be undone.')"><i class="bi bi-trash"></i> Delete</button>
+                      </form>
+                      {% endif %}
                     {% else %}
                       <span class="badge bg-light text-muted border me-1">You</span>
                     {% endif %}
