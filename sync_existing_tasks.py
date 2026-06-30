@@ -22,7 +22,6 @@ from db.init import get_connection
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
-logger.info("DIAG EMAIL_FIELD_ID=%r", config.CLICKUP_FIELD_EMAIL)  # STEP 1
 
 # ── Configuration ─────────────────────────────────────────────────────────
 
@@ -287,10 +286,6 @@ def process_task(task: dict, conn: sqlite3.Connection) -> str | None:
     location = parts[1].strip() if len(parts) > 1 else None
 
     raw_phone = _get_text_field(custom_fields, CLICKUP_FIELD_PHONE)
-    # STEP 2 diagnostic — log raw email field for task 86agkfa6v
-    if task_id == "86agkfa6v":
-        match = [f for f in custom_fields if f.get("id") == CLICKUP_FIELD_EMAIL]
-        logger.info("DIAG EMAIL_FIELD_RAW for 86agkfa6v: %r", match)
     customer_email = _get_text_field(custom_fields, CLICKUP_FIELD_EMAIL)
     
     service_labels = _get_scope_of_work(custom_fields)
