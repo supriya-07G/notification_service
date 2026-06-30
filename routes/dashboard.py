@@ -67,41 +67,10 @@ def has_no_reminder(title: str, description: str) -> bool:
     combined = f"{title or ''} {description or ''}"
     return bool(_NO_REMINDER_RE.search(combined))
 
-# Shared base WHERE clause — single source of truth for both badge and list.
-_QUARANTINE_UNRESOLVED = "resolved = FALSE OR resolved = 0"
-
-
-def _is_upcoming(appointment_at: str | None) -> bool:
-    """Return True when appointment_at is NULL or parses to a future/present datetime.
-
-    NULL = no date yet → treat as upcoming (keep visible by default).
-    Unparseable strings → treat as upcoming (safe default, never silently hides).
-    Both "%Y-%m-%d %H:%M:%S" and ISO "%Y-%m-%dT%H:%M:%S" are handled.
-    """
-    if not appointment_at:
-        return True
-    now = datetime.datetime.now(datetime.timezone.utc)
-    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S"):
-        try:
-            dt = datetime.datetime.strptime(appointment_at, fmt).replace(
-                tzinfo=datetime.timezone.utc
-            )
-            return dt >= now
-        except ValueError:
-            continue
-    return True  # unparseable → not past
-
-
-def _get_upcoming_quarantine_count(conn) -> int:
-    """Count unresolved quarantine records whose appointment is upcoming (or undated)."""
-    rows = conn.execute(
-        f"SELECT appointment_at FROM appointment_quarantine WHERE {_QUARANTINE_UNRESOLVED}"
-    ).fetchall()
-    return sum(1 for r in rows if _is_upcoming(r["appointment_at"]))
-
-
 def get_nav_context(conn):
-    quarantine_count = _get_upcoming_quarantine_count(conn)
+    quarantine_count = conn.execute(
+        "SELECT COUNT(*) FROM appointment_quarantine WHERE resolved = FALSE OR resolved = 0"
+    ).fetchone()[0]
     unprocessed_replies_count = conn.execute(
         "SELECT COUNT(*) FROM inbound_messages WHERE processed = FALSE OR processed = 0"
     ).fetchone()[0]
@@ -541,9 +510,12 @@ async def quarantine_page(
 
     conn = get_connection()
     try:
-        query = f"SELECT * FROM appointment_quarantine WHERE ({_QUARANTINE_UNRESOLVED})"
+        query = "SELECT * FROM appointment_quarantine WHERE (resolved = FALSE OR resolved = 0)"
         params = []
-
+        
+        if not show_past:
+            query += " AND (appointment_at >= datetime('now', '-1 day') OR appointment_at IS NULL)"
+            
         if search:
             query += " AND (raw_title LIKE ? OR quarantine_reason LIKE ?)"
             params.extend([f"%{search}%", f"%{search}%"])
@@ -566,9 +538,7 @@ async def quarantine_page(
         """
         
         items = conn.execute(query, params).fetchall()
-        if not show_past:
-            items = [r for r in items if _is_upcoming(r["appointment_at"])]
-
+        
         nav = get_nav_context(conn)
         csrf_token = generate_csrf_token()
 
