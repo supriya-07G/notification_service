@@ -167,16 +167,6 @@ _SERVICE_DATE_FIELD_MAP: dict[str, str] = {
     "Gutter Work": config.CLICKUP_FIELD_DATE_ROOF,
 }
 
-# Try date fields in this priority order when scope doesn't narrow it further
-_DATE_FIELD_PRIORITY = [
-    config.CLICKUP_FIELD_DATE_HVAC,
-    config.CLICKUP_FIELD_DATE_INSULATION,
-    config.CLICKUP_FIELD_DATE_ELECTRICAL,
-    config.CLICKUP_FIELD_DATE_ASSESSMENT,
-    config.CLICKUP_FIELD_DATE_REMEDIATION,
-    config.CLICKUP_FIELD_DATE_SOLAR,
-    config.CLICKUP_FIELD_DATE_ROOF,
-]
 
 
 # ── Signature Verification ─────────────────────────────────────────────────
@@ -333,22 +323,17 @@ def _epoch_ms_to_datetime_str(epoch_ms_str: str | None) -> str | None:
 
 
 def _resolve_date_fields(service_labels: list[str]) -> list[str]:
-    """Return an ordered list of date field IDs to try for the given service labels.
+    """Return an ordered list of date field IDs mapped from the task's scope labels.
 
-    Matched service date fields come first (preserving label order), then
-    all remaining priority fields are appended as fallback. This means even
-    a task with no scope will try every date field before being skipped.
+    Only returns fields that the scope labels explicitly map to via
+    _SERVICE_DATE_FIELD_MAP. If no label maps to a field, returns an empty
+    list and the task is skipped as "no scheduled date."
     """
     seen: set[str] = set()
     ordered: list[str] = []
 
     for label in service_labels:
         fid = _SERVICE_DATE_FIELD_MAP.get(label.strip())
-        if fid and fid not in seen:
-            seen.add(fid)
-            ordered.append(fid)
-
-    for fid in _DATE_FIELD_PRIORITY:
         if fid and fid not in seen:
             seen.add(fid)
             ordered.append(fid)

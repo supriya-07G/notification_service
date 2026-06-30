@@ -158,16 +158,6 @@ SERVICE_DATE_MAP = {
     "Gutter Work": config.CLICKUP_FIELD_DATE_ROOF,
 }
 
-# Fallback priority — try all fields in this order when scope doesn't resolve
-_DATE_FIELD_PRIORITY = [
-    config.CLICKUP_FIELD_DATE_HVAC,
-    config.CLICKUP_FIELD_DATE_INSULATION,
-    config.CLICKUP_FIELD_DATE_ELECTRICAL,
-    config.CLICKUP_FIELD_DATE_ASSESSMENT,
-    config.CLICKUP_FIELD_DATE_REMEDIATION,
-    config.CLICKUP_FIELD_DATE_SOLAR,
-    config.CLICKUP_FIELD_DATE_ROOF,
-]
 
 stats = {"fetched": 0, "inserted": 0, "updated": 0, "quarantined": 0, "skipped": 0, "resolved": 0, "orphaned_cleaned": 0}
 
@@ -305,16 +295,12 @@ def process_task(task: dict, conn: sqlite3.Connection) -> str | None:
     customer_phone = _validate_phone(raw_phone)
     phone_valid = bool(customer_phone)
 
-    # 4. Determine Appointment Date — try service-matched fields, then all others
+    # 4. Determine Appointment Date — only try fields the scope labels map to
     appointment_at = None
     seen_fields: set[str] = set()
     ordered_fields: list[str] = []
     for service in service_labels:
         fid = SERVICE_DATE_MAP.get(service)
-        if fid and fid not in seen_fields:
-            seen_fields.add(fid)
-            ordered_fields.append(fid)
-    for fid in _DATE_FIELD_PRIORITY:
         if fid and fid not in seen_fields:
             seen_fields.add(fid)
             ordered_fields.append(fid)
@@ -326,7 +312,7 @@ def process_task(task: dict, conn: sqlite3.Connection) -> str | None:
                 if val is not None:
                     try:
                         utc_dt = datetime.fromtimestamp(int(val) / 1000, tz=timezone.utc)
-                        appointment_at = utc_dt.isoformat()
+                        appointment_at = utc_dt.strftime("%Y-%m-%d %H:%M:%S")
                     except (ValueError, TypeError):
                         logger.warning(f"  Invalid date format for {task_id}")
                 break
@@ -352,12 +338,24 @@ def process_task(task: dict, conn: sqlite3.Connection) -> str | None:
             # Upsert into appointments
             existing = conn.execute("SELECT id FROM appointments WHERE id = ?", (appt_id,)).fetchone()
             conn.execute(
-                """INSERT OR REPLACE INTO appointments
+                """INSERT INTO appointments
                    (id, calendar_source, customer_name, customer_phone, customer_email,
-                    appointment_at, appointment_type, location, language, language_source,
-                    no_reminder, raw_title, synced_at, updated_at)
-                   VALUES (?, 'clickup', ?, ?, ?, ?, ?, ?, 'en', 'default',
-                           FALSE, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                    appointment_at, appointment_type, location, notes,
+                    language, language_source, no_reminder,
+                    raw_title, synced_at, updated_at)
+                   VALUES (?, 'clickup', ?, ?, ?, ?, ?, ?, NULL,
+                           'en', 'default', FALSE,
+                           ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                   ON CONFLICT(id) DO UPDATE SET
+                       customer_name    = excluded.customer_name,
+                       customer_phone   = excluded.customer_phone,
+                       customer_email   = excluded.customer_email,
+                       appointment_at   = excluded.appointment_at,
+                       appointment_type = excluded.appointment_type,
+                       location         = excluded.location,
+                       raw_title        = excluded.raw_title,
+                       synced_at        = CURRENT_TIMESTAMP,
+                       updated_at       = CURRENT_TIMESTAMP
                 """,
                 (appt_id, customer_name, customer_phone, customer_email,
                  appointment_at, appointment_type, location, task_name),
