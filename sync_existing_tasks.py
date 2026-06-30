@@ -320,6 +320,20 @@ def process_task(task: dict, conn: sqlite3.Connection) -> str | None:
             break
                 
     if not appointment_at:
+        # Still refresh contact fields for rows already in DB so stale email/phone/name
+        # don't persist when ClickUp is updated after the initial insert.
+        existing = conn.execute("SELECT id FROM appointments WHERE id=?", (appt_id,)).fetchone()
+        if existing:
+            conn.execute(
+                """UPDATE appointments SET
+                       customer_name  = COALESCE(?, customer_name),
+                       customer_phone = COALESCE(?, customer_phone),
+                       customer_email = ?,
+                       updated_at     = CURRENT_TIMESTAMP
+                   WHERE id = ?""",
+                (customer_name, _validate_phone(raw_phone), customer_email, appt_id),
+            )
+            conn.commit()
         logger.info(f"  Skipped: {task_id} ({task_name!r}) — no scheduled date")
         stats["skipped"] += 1
         return task_id
