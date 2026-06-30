@@ -41,68 +41,142 @@ FIELD_SCOPE_OF_WORK  = config.CLICKUP_FIELD_SCOPE  # ⭐ Scope Of Work (Complete
 
 # ── Scope UUID → Human-Readable Label Map ──────────────────────────────────
 # ClickUp stores selected options as UUIDs in the Scope Of Work field.
-# This lookup converts them to display names.
+# These UUIDs come from type_config.options on field 34fa9090-98fc-4ae6-be6a-2da9c688c018.
+# Verified against live API on 2026-06-30.
 SCOPE_LABELS: dict[str, str] = {
-    "4ddeb225-8a97-43e2-b13f-76e1ceba2421": "HVAC",
-    "696b02c7-0ba1-4db9-88a8-d2046a34f988": "Heat Pump",
-    "e7c41b98-904a-49a1-aeac-869689de714e": "Insulation",
-    "37b1a40a-8ada-4365-b788-335dd400dcab": "Electrical Upgrade",
-    "bcf515dc-72b3-4fa0-a9fa-438493457ab8": "Electrical",
-    "af3f18c2-20b1-43f5-9e06-5095b367186c": "Main Panel Upgrade",
-    "521b903b-3669-4290-8d10-c7ecd07a6cb6": "Knob & Tube",
-    "046912e0-cbf5-406c-b79d-9ee844d244a1": "EV Charger",
-    "502b3fcd-4b7e-48db-aace-bdbaf79ebd07": "Electric Baseboard",
-    "feacb0d0-9289-46b5-aa5c-a59e68ddf982": "Meter Relocation",
-    "da3d9daf-028b-41c5-a6ea-8bd4bf349c6a": "Water Heater",
-    "8a43d3e6-d871-4a67-9494-cb9d55c5239a": "Oil Tank Removal",
-    "4bf4a983-8444-4753-86ca-6098e7790f1e": "Boiler Removal",
-    "d51c724e-a960-424d-b9a9-c2911859c8f8": "Vermiculite",
-    "9408b957-b42a-4cf9-8999-2ec3a31c4f49": "Asbestos Remediation",
-    "b2bc7dd2-8b93-4b3d-aec0-9e2c2273dd34": "Mold Remediation",
-    "a18215d4-ee3c-432e-b180-cbdf517f8d41": "Solar",
-    "d8eee3b9-2a6c-4c92-8dd2-cb2b670cb689": "Battery Storage",
-    "50cdd4db-ee69-4c02-a481-62d78983808f": "Roof",
-    "7dc55451-0260-43f4-8b60-f947a4d5b931": "Roof Repair",
-    "3009845e-916b-468e-847d-4b2083ab1ed4": "Roof Replacement",
-    "b4ecd29c-c818-403c-9737-6b8544c4568b": "Tree Work",
-    "d767d7bb-2c17-4938-8345-df0fba2d51d8": "Air Sealing",
-    "8e278224-a70a-44d7-9b93-053b9c104b10": "Gas Furnace",
-    "f2889c32-8564-446f-99b6-562e59164d88": "Mass Save / Rebates",
-    "d4958870-3efc-4066-9719-c7089853e2e3": "Energy Assessment",
-    "1ede2bbd-8760-45f3-bee3-18d6a9e246a3": "Generator / Backup Power",
-    "540181f5-a3ed-4fb1-9cb6-0bfd9658397f": "Maintenance",
-    "aef35ff9-76a7-4c8f-aad0-f59941043feb": "Other",
+    # HVAC
+    "cc6fe608-05ca-4298-8f4c-e0df19a756fa": "HVAC",
+    "d8ca3147-0185-47b0-ae61-44eaebc89dd6": "Heat Pump",
+    "c56e9a03-0d34-4bd6-9cb3-853571f06e0c": "R410 - Mini VRF",
+    "c0560a98-619d-4b1d-aa3c-1f4a78f3603d": "Mini-Split",
+    "6980e526-0f1c-44c6-978b-e0ee5f3e13d3": "Central AC",
+    "82bcbc10-d3b2-4713-8feb-335475b2fbe1": "Air Handler",
+    "f0ad4286-a927-40e0-b259-212f7d1677e2": "Gas Furnace",
+    "22dd2511-7574-4bee-bb1e-264b17682093": "Boiler",
+    "6e79b69e-5a47-4a64-b3e3-65a762787ea0": "Baseboard Heater",
+    "fbb30366-1a60-4c48-af3b-bcfb03989d3b": "Water Heater",
+    "ec5a5fee-e03b-4b79-841a-dbf5701604e8": "Oil Tank Removal",
+    "f7f0a4b0-22e2-4e3c-9f11-39607f71c9a7": "Boiler Removal",
+    # Insulation
+    "f4307032-6e54-4ae6-bd31-4f97099a26b8": "Insulation",
+    "8d4514d4-79d5-4d41-a276-2d0c458f7551": "Attic Insulation",
+    "c15958fe-cab4-4e1a-b1a2-4599b04a3a89": "Wall Insulation",
+    "7e8dacef-ba87-4c2d-abbd-21dbd0d45c55": "Basement/Crawl Insulation",
+    "f534e9a5-7097-45ea-9463-d6cd4cdb9498": "Air Sealing",
+    "42b9c79b-c8e4-44d5-adcb-cd2cb6e40008": "Duct Sealing",
+    "84a51901-1de3-4072-b0ae-37205e168e9b": "Ductwork",
+    # Electrical
+    "dd14a99e-98cf-40ad-bf4c-ccd6ab14e1a1": "Electrical",
+    "7dd77582-b573-4240-9057-8a4027a2753d": "Electrical Upgrade",
+    "0a6a642b-1a33-4ebb-acb4-bb074a94f956": "Main Panel Upgrade",
+    "5c4a2c4e-05c2-47a4-a8c7-bccc63138db0": "Knob & Tube",
+    "491c5005-52a5-4b39-9ff5-367614468701": "Electric Baseboard",
+    "9ae51236-c0ba-40d8-baca-9b16b9f6cc93": "Electric Car Charging Station",
+    "bc0fd96f-56c1-41f8-8804-6407842f17d8": "EV Charger",
+    "ba2aef2e-8f65-4655-a050-aa58659a9480": "Meter Relocation",
+    "ca56e81a-1236-4729-9b55-66d98ecbd552": "Switches/Outlets/Fixtures - Install",
+    "495a79c3-c211-420f-b147-9f63ddd64089": "Interior Lighting - Install",
+    "131104a0-0801-4cbf-8b0b-e08ba801ac8d": "Generator / Backup Power",
+    # Assessment
+    "0621d49c-f2be-4533-9540-96086057a4e1": "Energy Assessment",
+    # Remediation
+    "41e294c6-1c04-42bf-b79d-49f1a10a4cee": "Vermiculite Remediation",
+    "9890794d-306e-4f9d-919e-e23de37a9132": "Asbestos Remediation",
+    "2e3e72ed-6d5c-4d7a-96c0-728688d82f3a": "Mold Remediation",
+    # Solar
+    "dc2cd534-bc6b-4f13-8ce1-86969c6a0ec1": "Solar",
+    "9be2d9e3-485a-411b-8d4e-315daa5cb8a8": "Battery Storage",
+    # Roof
+    "be9ad691-3151-4e4c-8ee2-0faf9b06d32d": "Roof",
+    "906a2c8a-f24b-4aa3-ab8c-af37ba1c8728": "Roof Repair",
+    "55c9407e-7b3e-4a67-b7c5-bdfa68d0f46e": "Roof Replacement",
+    "bca8904d-3b13-4cc1-8600-fd69b90c1b8a": "Gutter Work",
+    # Other
+    "7d073b58-bb9d-4b52-8acc-ffef28585e84": "Mass Save / Rebates",
+    "77a2951f-383d-408e-93c7-7cf666cd9ed9": "Tree Work",
+    "18ef3837-66a0-4d8b-a330-a7e9cbd6a7a6": "Structural Repairs",
+    "f75587d4-fbae-4814-90bd-9c8b11ab1ccc": "Vent Relocation",
+    "c427054f-83dc-49dc-af5d-5f03e2485b14": "Chimney Work",
+    "73baddde-6383-4ec8-9f45-809beb3eeb9d": "Maintenance",
+    "25b3ac69-913b-4a76-8ff1-759ee4f354cb": "Drywall / Finish Repair",
+    "0b94d381-0111-4d1f-ad0e-1b9fa84d3c3a": "WINDOWS",
+    "de92cd50-0dd4-42df-b951-39b9cb338e43": "Commercial Mass Save",
+    "faad5ea7-ba2a-49b4-82b1-cd65986880d2": "Pergola",
+    "5fcf594a-c600-41c9-bf1d-bc942a63d92e": "Payoff Electric Bill",
+    "c6824339-2204-43b6-9325-5f6fce55f8c1": "Other / Manual Entry X",
+    "de93ec40-3600-40a1-8c2c-b810be9c9f1c": "Urgent Attention X",
+    "f37ae3de-bc0d-4d15-8ccf-ded18ee06326": "Credit Work X",
+    "aa0dc574-429a-4db5-8964-3afe1e2c66cb": "Appliances X",
+    "b1ff0fbb-547f-4496-98be-60acbd42c2bb": "Apply for Permit X",
+    "5f66261e-3728-475b-83e4-4bd7f872703c": "Temecula Remediation X",
+    "61a7a104-dad4-4846-b0a0-68afff7b764f": "Air Handler + Heat Pump X",
+    "468098a5-e320-4144-91fd-fc6df590120e": "NTP Palmetto X",
 }
 
 # ── Service → Date Field mapping ───────────────────────────────────────────
-# Maps each scope-of-work label as it appears in ClickUp to its corresponding date field ID.
-# First match wins when a task has multiple services selected.
 _SERVICE_DATE_FIELD_MAP: dict[str, str] = {
+    # HVAC
     "HVAC": config.CLICKUP_FIELD_DATE_HVAC,
     "Heat Pump": config.CLICKUP_FIELD_DATE_HVAC,
+    "R410 - Mini VRF": config.CLICKUP_FIELD_DATE_HVAC,
     "Mini-Split": config.CLICKUP_FIELD_DATE_HVAC,
     "Central AC": config.CLICKUP_FIELD_DATE_HVAC,
     "Air Handler": config.CLICKUP_FIELD_DATE_HVAC,
+    "Gas Furnace": config.CLICKUP_FIELD_DATE_HVAC,
+    "Boiler": config.CLICKUP_FIELD_DATE_HVAC,
+    "Baseboard Heater": config.CLICKUP_FIELD_DATE_HVAC,
+    "Water Heater": config.CLICKUP_FIELD_DATE_HVAC,
+    "Oil Tank Removal": config.CLICKUP_FIELD_DATE_HVAC,
+    "Boiler Removal": config.CLICKUP_FIELD_DATE_HVAC,
+    "Air Handler + Heat Pump X": config.CLICKUP_FIELD_DATE_HVAC,
+    # Insulation
     "Insulation": config.CLICKUP_FIELD_DATE_INSULATION,
     "Attic Insulation": config.CLICKUP_FIELD_DATE_INSULATION,
     "Wall Insulation": config.CLICKUP_FIELD_DATE_INSULATION,
-    "Basement Insulation": config.CLICKUP_FIELD_DATE_INSULATION,
+    "Basement/Crawl Insulation": config.CLICKUP_FIELD_DATE_INSULATION,
+    "Air Sealing": config.CLICKUP_FIELD_DATE_INSULATION,
+    "Duct Sealing": config.CLICKUP_FIELD_DATE_INSULATION,
+    "Ductwork": config.CLICKUP_FIELD_DATE_INSULATION,
+    "Mass Save / Rebates": config.CLICKUP_FIELD_DATE_INSULATION,
+    # Electrical
     "Electrical": config.CLICKUP_FIELD_DATE_ELECTRICAL,
     "Electrical Upgrade": config.CLICKUP_FIELD_DATE_ELECTRICAL,
     "Main Panel Upgrade": config.CLICKUP_FIELD_DATE_ELECTRICAL,
+    "Knob & Tube": config.CLICKUP_FIELD_DATE_ELECTRICAL,
+    "Electric Baseboard": config.CLICKUP_FIELD_DATE_ELECTRICAL,
+    "Electric Car Charging Station": config.CLICKUP_FIELD_DATE_ELECTRICAL,
     "EV Charger": config.CLICKUP_FIELD_DATE_ELECTRICAL,
+    "Meter Relocation": config.CLICKUP_FIELD_DATE_ELECTRICAL,
+    "Switches/Outlets/Fixtures - Install": config.CLICKUP_FIELD_DATE_ELECTRICAL,
+    "Interior Lighting - Install": config.CLICKUP_FIELD_DATE_ELECTRICAL,
+    "Generator / Backup Power": config.CLICKUP_FIELD_DATE_ELECTRICAL,
+    # Assessment
     "Energy Assessment": config.CLICKUP_FIELD_DATE_ASSESSMENT,
-    "Vermiculite": config.CLICKUP_FIELD_DATE_REMEDIATION,
+    # Remediation
+    "Vermiculite Remediation": config.CLICKUP_FIELD_DATE_REMEDIATION,
     "Asbestos Remediation": config.CLICKUP_FIELD_DATE_REMEDIATION,
     "Mold Remediation": config.CLICKUP_FIELD_DATE_REMEDIATION,
+    "Temecula Remediation X": config.CLICKUP_FIELD_DATE_REMEDIATION,
+    # Solar
     "Solar": config.CLICKUP_FIELD_DATE_SOLAR,
+    "Battery Storage": config.CLICKUP_FIELD_DATE_SOLAR,
+    # Roof
     "Roof": config.CLICKUP_FIELD_DATE_ROOF,
     "Roof Repair": config.CLICKUP_FIELD_DATE_ROOF,
     "Roof Replacement": config.CLICKUP_FIELD_DATE_ROOF,
+    "Gutter Work": config.CLICKUP_FIELD_DATE_ROOF,
 }
 
-# Fallback date field when no scope match found
-_DEFAULT_DATE_FIELD = config.CLICKUP_FIELD_DATE_HVAC
+# Try date fields in this priority order when scope doesn't narrow it further
+_DATE_FIELD_PRIORITY = [
+    config.CLICKUP_FIELD_DATE_HVAC,
+    config.CLICKUP_FIELD_DATE_INSULATION,
+    config.CLICKUP_FIELD_DATE_ELECTRICAL,
+    config.CLICKUP_FIELD_DATE_ASSESSMENT,
+    config.CLICKUP_FIELD_DATE_REMEDIATION,
+    config.CLICKUP_FIELD_DATE_SOLAR,
+    config.CLICKUP_FIELD_DATE_ROOF,
+]
 
 
 # ── Signature Verification ─────────────────────────────────────────────────
@@ -258,17 +332,28 @@ def _epoch_ms_to_datetime_str(epoch_ms_str: str | None) -> str | None:
         return None
 
 
-def _resolve_date_field(service_labels: list[str]) -> str:
-    """Return the correct date field ID for the given list of service labels.
+def _resolve_date_fields(service_labels: list[str]) -> list[str]:
+    """Return an ordered list of date field IDs to try for the given service labels.
 
-    Iterates through the labels in order and returns the first field ID found
-    in the service→date map. Falls back to HVAC date field.
+    Matched service date fields come first (preserving label order), then
+    all remaining priority fields are appended as fallback. This means even
+    a task with no scope will try every date field before being skipped.
     """
+    seen: set[str] = set()
+    ordered: list[str] = []
+
     for label in service_labels:
-        field_id = _SERVICE_DATE_FIELD_MAP.get(label.strip())
-        if field_id:
-            return field_id
-    return _DEFAULT_DATE_FIELD
+        fid = _SERVICE_DATE_FIELD_MAP.get(label.strip())
+        if fid and fid not in seen:
+            seen.add(fid)
+            ordered.append(fid)
+
+    for fid in _DATE_FIELD_PRIORITY:
+        if fid and fid not in seen:
+            seen.add(fid)
+            ordered.append(fid)
+
+    return ordered
 
 
 # ── Phone Validation ───────────────────────────────────────────────────────
@@ -342,10 +427,14 @@ def _extract_appointment_data(payload: dict) -> dict:
     service_labels   = _get_scope_of_work(custom_fields, FIELD_SCOPE_OF_WORK)
     appointment_type = ", ".join(service_labels) if service_labels else "service"
 
-    # ── Appointment Date: service-specific date field (epoch ms)
-    # Different services have different date fields; resolve based on scope.
-    date_field_id = _resolve_date_field(service_labels)
-    raw_date      = _get_date_field_raw(custom_fields, date_field_id)
+    # ── Appointment Date: try date fields in priority order until one has a value
+    date_field_id  = None
+    raw_date       = None
+    for fid in _resolve_date_fields(service_labels):
+        raw_date = _get_date_field_raw(custom_fields, fid)
+        if raw_date:
+            date_field_id = fid
+            break
     appointment_at = _epoch_ms_to_datetime_str(raw_date)
 
     return {

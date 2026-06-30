@@ -74,6 +74,16 @@ def validate_config():
     if not config.CLICKUP_WEBHOOK_SECRET:
         missing.append("CLICKUP_WEBHOOK_SECRET")
     
+    date_fields = [
+        "CLICKUP_FIELD_DATE_HVAC", "CLICKUP_FIELD_DATE_INSULATION",
+        "CLICKUP_FIELD_DATE_ELECTRICAL", "CLICKUP_FIELD_DATE_ASSESSMENT",
+        "CLICKUP_FIELD_DATE_REMEDIATION", "CLICKUP_FIELD_DATE_SOLAR",
+        "CLICKUP_FIELD_DATE_ROOF",
+    ]
+    for attr in date_fields:
+        if not getattr(config, attr, None):
+            missing.append(attr)
+
     if missing:
         raise RuntimeError(
             f"Missing required environment variables: {', '.join(missing)}\n"
