@@ -32,6 +32,7 @@ from db.init import get_connection
 from utils.log_helpers import mask_phone, mask_name
 
 logger = logging.getLogger(__name__)
+logger.info("DIAG EMAIL_FIELD_ID=%r", config.CLICKUP_FIELD_EMAIL)  # STEP 1
 
 # ── ClickUp Field IDs (from .env via config.py) ────────────────────────────
 FIELD_CUSTOMER_NAME  = config.CLICKUP_FIELD_NAME   # ⭐ Full Name
@@ -405,6 +406,10 @@ def _extract_appointment_data(payload: dict) -> dict:
 
     # ── Phone & Email (extraction unchanged — was already working correctly)
     customer_phone = _get_text_field(custom_fields, FIELD_CUSTOMER_PHONE)
+    # STEP 2 diagnostic — log raw email field for task 86agkfa6v
+    if task.get("id") == "86agkfa6v":
+        match = [f for f in custom_fields if f.get("id") == FIELD_CUSTOMER_EMAIL]
+        logger.info("DIAG EMAIL_FIELD_RAW for 86agkfa6v: %r", match)
     customer_email = _get_text_field(custom_fields, FIELD_CUSTOMER_EMAIL)
 
     # ── Appointment Type: ⭐ Scope Of Work (Complete) — multi-select
