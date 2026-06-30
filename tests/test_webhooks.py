@@ -236,7 +236,7 @@ class TestClickUpWebhookIdempotency:
                     {"id": config.CLICKUP_FIELD_EMAIL, "value": "jane@example.com"},
                     {
                         "id": config.CLICKUP_FIELD_SCOPE,
-                        "value": ["4ddeb225-8a97-43e2-b13f-76e1ceba2421"],
+                        "value": ["cc6fe608-05ca-4298-8f4c-e0df19a756fa"],
                     },
                     {"id": config.CLICKUP_FIELD_DATE_HVAC, "value": 1735689600000},
                 ],
