@@ -1,4 +1,4 @@
-import datetime
+﻿import datetime
 import json
 import os
 import re
@@ -33,6 +33,28 @@ import phonenumbers
 logger = logging.getLogger(__name__)
 
 templates = Jinja2Templates(directory="templates/dashboard")
+
+
+def _fmt_dt(value: str | None) -> str:
+    """Format a stored datetime string as 'YYYY-MM-DD  HH:MM' for display.
+
+    Parses both ISO-with-tz ("2026-12-15T09:00:00+00:00") and
+    space-separated ("%Y-%m-%d %H:%M:%S"). Returns "—" for NULL or
+    unparseable values. Display-only — stored value is never touched.
+    """
+    if not value:
+        return "—"
+    try:
+        dt = datetime.datetime.fromisoformat(value)
+    except ValueError:
+        try:
+            dt = datetime.datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            return "—"
+    return dt.strftime("%Y-%m-%d  %H:%M")
+
+
+templates.env.filters["fmt_dt"] = _fmt_dt
 router = APIRouter(prefix="/dashboard")
 
 
