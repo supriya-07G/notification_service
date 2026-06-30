@@ -328,7 +328,7 @@ def process_task(task: dict, conn: sqlite3.Connection) -> str | None:
                 """UPDATE appointments SET
                        customer_name  = COALESCE(?, customer_name),
                        customer_phone = COALESCE(?, customer_phone),
-                       customer_email = ?,
+                       customer_email = COALESCE(?, customer_email),
                        updated_at     = CURRENT_TIMESTAMP
                    WHERE id = ?""",
                 (customer_name, _validate_phone(raw_phone), customer_email, appt_id),
