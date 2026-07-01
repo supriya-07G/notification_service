@@ -158,6 +158,24 @@ SERVICE_DATE_MAP = {
     "Gutter Work": config.CLICKUP_FIELD_DATE_ROOF,
 }
 
+# Allowlist of custom-field IDs holding real SCHEDULED/UPCOMING appointment dates.
+# Date selection reads ONLY these, INDEPENDENT of Scope Of Work — so a task with
+# no scope set still resolves its dates. Completion/marker fields (e.g.
+# "Installation Completed", "Close Date") are deliberately EXCLUDED: they record
+# when work finished or a deal closed, not when the customer is expected, and must
+# never be chosen as the appointment time. Deduped, empty IDs dropped.
+APPOINTMENT_DATE_FIELDS = list(dict.fromkeys(
+    fid for fid in (
+        config.CLICKUP_FIELD_DATE_HVAC,
+        config.CLICKUP_FIELD_DATE_INSULATION,
+        config.CLICKUP_FIELD_DATE_ELECTRICAL,
+        config.CLICKUP_FIELD_DATE_ASSESSMENT,
+        config.CLICKUP_FIELD_DATE_REMEDIATION,
+        config.CLICKUP_FIELD_DATE_SOLAR,
+        config.CLICKUP_FIELD_DATE_ROOF,
+    ) if fid
+))
+
 
 stats = {"fetched": 0, "inserted": 0, "updated": 0, "quarantined": 0, "skipped": 0, "resolved": 0, "orphaned_cleaned": 0}
 
@@ -295,24 +313,17 @@ def process_task(task: dict, conn: sqlite3.Connection) -> str | None:
     customer_phone = _validate_phone(raw_phone)
     phone_valid = bool(customer_phone)
 
-    # 4. Determine Appointment Date — only try fields the scope labels map to.
-    # Collect ALL mapped date fields that have a value, then pick the SOONEST
-    # upcoming date (>= now); if none are upcoming, fall back to the MOST RECENT.
-    # Returning customers keep old scope options checked, whose stale past dates
-    # come earlier — taking the first non-null there buried the real (future)
-    # appointment and made the engine skip the reminder.
+    # 4. Determine Appointment Date — read EVERY allowlisted date field on the
+    # task, ignoring Scope Of Work entirely. Pick the SOONEST upcoming date
+    # (>= now); if none are upcoming, fall back to the MOST RECENT. Decoupling
+    # from scope fixes two bugs: (1) scope-less tasks used to map to zero date
+    # fields and get skipped despite having real dates; (2) returning customers'
+    # stale past dates on an old service field no longer win just by appearing
+    # earlier in the list.
     appointment_at = None
-    seen_fields: set[str] = set()
-    ordered_fields: list[str] = []
-    for service in service_labels:
-        fid = SERVICE_DATE_MAP.get(service)
-        if fid and fid not in seen_fields:
-            seen_fields.add(fid)
-            ordered_fields.append(fid)
-
     now_utc = datetime.now(timezone.utc)
     date_candidates: list[tuple[datetime, str]] = []  # (utc_dt, field_id)
-    for field_id in ordered_fields:
+    for field_id in APPOINTMENT_DATE_FIELDS:
         for field in custom_fields:
             if field.get("id") == field_id:
                 val = field.get("value")
