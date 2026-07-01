@@ -241,6 +241,10 @@ def _get_text_field(custom_fields: list, field_id: str) -> str | None:
         val = field.get("value")
         if isinstance(val, str) and val.strip():
             return val.strip()
+        # ClickUp may return phone/number fields as a numeric scalar (e.g. a
+        # phone entered without a leading '+'). Coerce so it isn't dropped.
+        if isinstance(val, (int, float)):
+            return str(val)
         return None
     return None
 
