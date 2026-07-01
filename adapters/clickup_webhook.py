@@ -527,15 +527,51 @@ def process_webhook(payload: dict) -> dict:
             conn.commit()
             return {"status": "ok", "action": "skipped", "reason": "no_scheduled_date"}
 
+        # ── Guard: never quarantine a customer already valid in appointments ─
+        # A re-fetch with a missing/unparseable name or phone must not quarantine
+        # someone we already have good data for. Skip + COALESCE-refresh instead.
+        appt_id = f"clickup_{task_id}"
+        formatted_phone = _validate_phone(data["customer_phone"])
+        name_bad = not data["customer_name"] or not data["customer_name"].strip()
+        if name_bad or not formatted_phone:
+            already = conn.execute(
+                "SELECT id FROM appointments WHERE id = ?", (appt_id,)
+            ).fetchone()
+            if already:
+                conn.execute(
+                    """UPDATE appointments SET
+                           customer_name  = COALESCE(?, customer_name),
+                           customer_email = COALESCE(?, customer_email),
+                           customer_phone = COALESCE(?, customer_phone),
+                           updated_at     = CURRENT_TIMESTAMP
+                       WHERE id = ?""",
+                    (
+                        None if name_bad else data["customer_name"].strip(),
+                        data.get("customer_email"),
+                        formatted_phone,   # validated phone or None — never junk
+                        appt_id,
+                    ),
+                )
+                # Customer is clearly valid — resolve any open quarantine row.
+                conn.execute(
+                    """UPDATE appointment_quarantine
+                       SET resolved = 1, resolved_at = CURRENT_TIMESTAMP
+                       WHERE gcal_event_id = ? AND resolved = 0""",
+                    (appt_id,),
+                )
+                _record_event(conn, external_event_id)
+                conn.commit()
+                logger.info("↩︎ Skipped %s: already in appointments, keeping existing data", task_id)
+                return {"status": "ok", "action": "skipped", "reason": "already_in_appointments"}
+
         # ── Validate: customer name ─────────────────────────────────────────
-        if not data["customer_name"] or not data["customer_name"].strip():
+        if name_bad:
             _quarantine(conn, data, "missing_name")
             _record_event(conn, external_event_id)
             conn.commit()
             return {"status": "ok", "action": "quarantined", "reason": "missing_name"}
 
         # ── Validate: phone number ──────────────────────────────────────────
-        formatted_phone = _validate_phone(data["customer_phone"])
         if not formatted_phone:
             reason = "missing_phone" if not data["customer_phone"] else "invalid_phone"
             _quarantine(conn, data, reason)
@@ -544,7 +580,6 @@ def process_webhook(payload: dict) -> dict:
             return {"status": "ok", "action": "quarantined", "reason": reason}
 
         # ── UPSERT into appointments ────────────────────────────────────────
-        appt_id  = f"clickup_{task_id}"
         existing = conn.execute(
             "SELECT id FROM appointments WHERE id = ?", (appt_id,)
         ).fetchone()

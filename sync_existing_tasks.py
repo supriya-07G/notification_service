@@ -419,9 +419,37 @@ def process_task(task: dict, conn: sqlite3.Connection) -> str | None:
                 stats["inserted"] += 1
                 
         else:
+            # Guard: if this customer is ALREADY a valid row in appointments, a
+            # missing/unparseable phone on THIS fetch must not quarantine them —
+            # we already have good data. Treat as a skip and preserve stored data.
+            already = conn.execute(
+                "SELECT id FROM appointments WHERE id = ?", (appt_id,)
+            ).fetchone()
+            if already:
+                conn.execute(
+                    """UPDATE appointments SET
+                           customer_name  = COALESCE(?, customer_name),
+                           customer_email = COALESCE(?, customer_email),
+                           customer_phone = COALESCE(?, customer_phone),
+                           updated_at     = CURRENT_TIMESTAMP
+                       WHERE id = ?""",
+                    (customer_name, customer_email, customer_phone, appt_id),
+                )
+                # customer_phone here is the VALIDATED phone (None if invalid),
+                # so COALESCE never overwrites a good stored phone with junk.
+                if quar_row and quar_row["resolved"] == 0:
+                    conn.execute(
+                        "UPDATE appointment_quarantine SET resolved = 1, resolved_at = CURRENT_TIMESTAMP WHERE id = ?",
+                        (quar_row["id"],),
+                    )
+                conn.commit()
+                logger.info(f"  ↩︎ Skipped {task_id}: already in appointments, keeping existing data")
+                stats["skipped"] += 1
+                return task_id
+
             # Missing data -> Quarantine
             reason = "missing_name" if not customer_name else ("missing_phone" if not raw_phone else "invalid_phone")
-            
+
             if quar_row:
                 # Update existing quarantine
                 if quar_row["resolved"] == 1:
