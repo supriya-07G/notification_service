@@ -176,6 +176,19 @@ APPOINTMENT_DATE_FIELDS = list(dict.fromkeys(
     ) if fid
 ))
 
+# Maps the CHOSEN date field back to a single human category. appointment_type
+# reflects the one service tied to the winning appointment date — not the full
+# Scope Of Work list, which accumulates every service a customer has ever had.
+DATE_FIELD_TO_CATEGORY = {
+    config.CLICKUP_FIELD_DATE_HVAC:        "HVAC",
+    config.CLICKUP_FIELD_DATE_INSULATION:  "Insulation",
+    config.CLICKUP_FIELD_DATE_ELECTRICAL:  "Electrical",
+    config.CLICKUP_FIELD_DATE_ASSESSMENT:  "Assessment",
+    config.CLICKUP_FIELD_DATE_REMEDIATION: "Remediation",
+    config.CLICKUP_FIELD_DATE_SOLAR:       "Solar",
+    config.CLICKUP_FIELD_DATE_ROOF:        "Roof",
+}
+
 
 stats = {"fetched": 0, "inserted": 0, "updated": 0, "quarantined": 0, "skipped": 0, "resolved": 0, "orphaned_cleaned": 0}
 
@@ -310,8 +323,10 @@ def process_task(task: dict, conn: sqlite3.Connection) -> str | None:
     raw_phone = _get_text_field(custom_fields, CLICKUP_FIELD_PHONE)
     customer_email = _get_text_field(custom_fields, CLICKUP_FIELD_EMAIL)
     
+    # Scope Of Work kept for logging/reference only; NOT used as appointment_type
+    # (it lists every service the customer ever had). appointment_type is set from
+    # the chosen date field below.
     service_labels = _get_scope_of_work(custom_fields)
-    appointment_type = ", ".join(service_labels) if service_labels else "service"
 
     # 2. Validate Phone
     customer_phone = _validate_phone(raw_phone)
@@ -350,6 +365,12 @@ def process_task(task: dict, conn: sqlite3.Connection) -> str | None:
     date_field_used = chosen[1] if chosen else None
     if chosen:
         appointment_at = chosen[0].strftime("%Y-%m-%d %H:%M:%S")
+
+    # appointment_type = the single service tied to the chosen date field.
+    if date_field_used:
+        appointment_type = DATE_FIELD_TO_CATEGORY.get(date_field_used, "service")
+    else:
+        appointment_type = "service"
                 
     if not appointment_at:
         # Still refresh contact fields for rows already in DB so stale email/phone/name

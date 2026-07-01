@@ -185,6 +185,19 @@ _APPOINTMENT_DATE_FIELDS: list[str] = list(dict.fromkeys(
     ) if fid
 ))
 
+# Maps the CHOSEN date field back to a single human category. appointment_type
+# reflects the one service tied to the winning appointment date — not the full
+# Scope Of Work list, which accumulates every service a customer has ever had.
+DATE_FIELD_TO_CATEGORY: dict[str, str] = {
+    config.CLICKUP_FIELD_DATE_HVAC:        "HVAC",
+    config.CLICKUP_FIELD_DATE_INSULATION:  "Insulation",
+    config.CLICKUP_FIELD_DATE_ELECTRICAL:  "Electrical",
+    config.CLICKUP_FIELD_DATE_ASSESSMENT:  "Assessment",
+    config.CLICKUP_FIELD_DATE_REMEDIATION: "Remediation",
+    config.CLICKUP_FIELD_DATE_SOLAR:       "Solar",
+    config.CLICKUP_FIELD_DATE_ROOF:        "Roof",
+}
+
 
 
 # ── Signature Verification ─────────────────────────────────────────────────
@@ -429,10 +442,9 @@ def _extract_appointment_data(payload: dict) -> dict:
     customer_phone = _get_text_field(custom_fields, FIELD_CUSTOMER_PHONE)
     customer_email = _get_text_field(custom_fields, FIELD_CUSTOMER_EMAIL)
 
-    # ── Appointment Type: ⭐ Scope Of Work (Complete) — multi-select
-    # Gives the actual service ("Heat Pump", "Insulation"), NOT the payment method.
-    service_labels   = _get_scope_of_work(custom_fields, FIELD_SCOPE_OF_WORK)
-    appointment_type = ", ".join(service_labels) if service_labels else "service"
+    # ── Scope Of Work (Complete) — multi-select. Kept for logging/reference only;
+    # NOT used as appointment_type (it lists every service the customer ever had).
+    service_labels = _get_scope_of_work(custom_fields, FIELD_SCOPE_OF_WORK)
 
     # ── Appointment Date: read EVERY allowlisted date field on the task, ignoring
     # Scope Of Work entirely. Pick the SOONEST upcoming date (>= now); if none are
@@ -462,6 +474,12 @@ def _extract_appointment_data(payload: dict) -> dict:
 
     date_field_id = chosen[1] if chosen else None
     appointment_at = _epoch_ms_to_datetime_str(chosen[2]) if chosen else None
+
+    # appointment_type = the single service tied to the chosen date field.
+    if date_field_id:
+        appointment_type = DATE_FIELD_TO_CATEGORY.get(date_field_id, "service")
+    else:
+        appointment_type = "service"
 
     return {
         "task_id":          task_id,
