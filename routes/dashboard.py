@@ -1,4 +1,4 @@
-﻿import datetime
+import datetime
 import json
 import os
 import re
@@ -160,6 +160,17 @@ def get_nav_context(conn):
         "unprocessed_replies_count": unprocessed_replies_count
     }
 
+
+def _csrf_for(user: dict | None) -> str:
+    """Generate a CSRF token bound to the current user's session id.
+
+    Always use this instead of bare generate_csrf_token() for GET routes that
+    render forms, so that the token is tied to the specific session. This
+    prevents a CSRF token stolen from one session from being replayed against
+    another (S9 fix).
+    """
+    return generate_csrf_token(session_id=user.get("session_id") if user else None)
+
 def _get_client_ip(request: Request) -> str:
     """Extract client IP for logging."""
     import os
@@ -172,7 +183,7 @@ def _get_client_ip(request: Request) -> str:
 
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded:
-        return forwarded.split(",")[0].strip()
+        return forwarded.split(",")[-1].strip()
         
     return direct_ip
 
@@ -687,7 +698,7 @@ async def appointments(
                     "end_date": end_date,
                 },
                 "user": user,
-                "csrf_token": generate_csrf_token(),
+                "csrf_token": _csrf_for(user),
                 **nav
             }
         )
@@ -822,7 +833,7 @@ async def quarantine_page(
             items = [r for r in items if _is_upcoming(r["appointment_at"])]
 
         nav = get_nav_context(conn)
-        csrf_token = generate_csrf_token()
+        csrf_token = _csrf_for(user)
 
         return templates.TemplateResponse(
             "quarantine.html",
@@ -1253,9 +1264,23 @@ async def edit_appointment(
     except Exception:
         formatted_phone = customer_phone.strip()
 
+    import pytz
     conn = None
     try:
         conn = get_connection()
+        # Convert appointment_at from local timezone to UTC before storage.
+        # The HTML datetime-local input sends "YYYY-MM-DDTHH:MM" in local time;
+        # the engine reads appointment_at as UTC, so we must canonicalize here
+        # (mirrors the ClickUp webhook ingestion path — L8 fix).
+        from db.settings import Settings as _Settings
+        tz_name = _Settings(conn).get("timezone", "America/New_York")
+        tz = pytz.timezone(tz_name)
+        try:
+            dt_local = datetime.datetime.strptime(appointment_at.strip(), "%Y-%m-%dT%H:%M")
+            appointment_at_utc = tz.localize(dt_local).astimezone(pytz.utc).strftime("%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            # If the string is already in a different format, store as-is
+            appointment_at_utc = appointment_at.strip()
         conn.execute(
             """UPDATE appointments
                SET customer_name = ?, customer_phone = ?, customer_email = ?,
@@ -1263,7 +1288,7 @@ async def edit_appointment(
                    updated_at = CURRENT_TIMESTAMP
                WHERE id = ?""",
             [customer_name.strip(), formatted_phone, customer_email.strip() or None,
-             appointment_type, appointment_at, location.strip() or None, notes.strip() or None, id]
+             appointment_type, appointment_at_utc, location.strip() or None, notes.strip() or None, id]
         )
         conn.commit()
     except Exception as e:
@@ -1451,7 +1476,7 @@ async def update_settings(
     user = get_current_user(request)
     if not user or user.get("role") not in ("super_admin", "admin"):
         return RedirectResponse(url="/dashboard/", status_code=302)
-    if not validate_csrf_token(csrf_token):
+    if not validate_csrf_token(csrf_token, session_id=user.get("session_id") if user else None):
         return RedirectResponse(url="/dashboard/settings?error=Invalid+CSRF+token", status_code=303)
 
     form_data = await request.form()
@@ -1649,7 +1674,7 @@ async def staff_list(request: Request):
                 "request": request,
                 "active_page": "staff",
                 "staff_members": staff_members,
-                "csrf_token": generate_csrf_token(),
+                "csrf_token": _csrf_for(user),
                 "user": user,
                 **nav
             }
@@ -1975,13 +2000,13 @@ from utils.translate_dict import translate_text
 async def api_get_template(request: Request, id: int):
     redirect = require_login(request)
     if redirect:
-        return {"error": "Unauthorized"}
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
 
     conn = get_connection()
     try:
         template = conn.execute("SELECT * FROM message_templates WHERE id = ?", [id]).fetchone()
         if not template:
-            return {"error": "Not found"}
+            return JSONResponse(status_code=404, content={"error": "Not found"})
         return dict(template)
     finally:
         conn.close()
@@ -1992,10 +2017,10 @@ async def api_save_template(request: Request, id: int, data: dict = Body(...)):
     if redirect:
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     user = get_current_user(request)
-    if not user:
-        return JSONResponse(status_code=403, content={"error": "Access denied"})
+    if not user or user.get("role") not in ("super_admin", "admin"):
+        return JSONResponse(status_code=403, content={"error": "Access denied: admin or super_admin required"})
     csrf = request.headers.get("X-CSRF-Token", "")
-    if not validate_csrf_token(csrf):
+    if not validate_csrf_token(csrf, session_id=user.get("session_id")):
         return JSONResponse(status_code=403, content={"error": "Invalid CSRF token"})
 
     conn = get_connection()
@@ -2015,10 +2040,10 @@ async def api_translate_template(request: Request, id: int, data: dict = Body(..
     if redirect:
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     user = get_current_user(request)
-    if not user:
-        return JSONResponse(status_code=403, content={"error": "Access denied"})
+    if not user or user.get("role") not in ("super_admin", "admin"):
+        return JSONResponse(status_code=403, content={"error": "Access denied: admin or super_admin required"})
     csrf = request.headers.get("X-CSRF-Token", "")
-    if not validate_csrf_token(csrf):
+    if not validate_csrf_token(csrf, session_id=user.get("session_id")):
         return JSONResponse(status_code=403, content={"error": "Invalid CSRF token"})
         
     body = data.get("body", "")
@@ -2031,10 +2056,10 @@ async def api_revert_template(request: Request, id: int):
     if redirect:
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     user = get_current_user(request)
-    if not user:
-        return JSONResponse(status_code=403, content={"error": "Access denied"})
+    if not user or user.get("role") not in ("super_admin", "admin"):
+        return JSONResponse(status_code=403, content={"error": "Access denied: admin or super_admin required"})
     csrf = request.headers.get("X-CSRF-Token", "")
-    if not validate_csrf_token(csrf):
+    if not validate_csrf_token(csrf, session_id=user.get("session_id")):
         return JSONResponse(status_code=403, content={"error": "Invalid CSRF token"})
         
     # Default string based on typical reminders

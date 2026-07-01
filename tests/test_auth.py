@@ -161,6 +161,11 @@ class TestCSRF:
         token = generate_csrf_token()
         assert validate_csrf_token(token) is True
 
+    def test_session_bound_token_rejects_other_session(self):
+        token = generate_csrf_token(session_id="session-a")
+        assert validate_csrf_token(token, session_id="session-b") is False
+        assert validate_csrf_token(token, session_id="session-a") is True
+
     def test_reject_tampered_token(self):
         token = generate_csrf_token()
         assert validate_csrf_token(token + "x") is False

@@ -48,7 +48,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_quar_gcal_event ON appointment_quarantine(
 CREATE TABLE IF NOT EXISTS notification_attempts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     appointment_id TEXT NOT NULL REFERENCES appointments(id),
-    appointment_at TIMESTAMP NOT NULL,            -- snapshot of appt time at send (for dedup)
+    appointment_at TIMESTAMP NOT NULL,            -- snapshot of appt time at send (audit only; not part of dedup key)
     rule_name TEXT NOT NULL,                      -- customer_72h | customer_24h | customer_2h
     channel TEXT NOT NULL,                        -- sms | email
     to_address TEXT NOT NULL,
@@ -60,7 +60,8 @@ CREATE TABLE IF NOT EXISTS notification_attempts (
     status_updated_at TIMESTAMP,
     error_code TEXT,
     error_message TEXT,
-    UNIQUE (appointment_id, rule_name, channel, appointment_at)
+    UNIQUE (appointment_id, rule_name, channel)   -- dedup per appt×rule×channel; appointment_at excluded so
+                                                  -- rescheduled appointments do NOT retrigger sent reminders
 );
 
 -- ----- opt_outs -----
@@ -168,7 +169,7 @@ CREATE TABLE IF NOT EXISTS email_queue (
 
 -- ----- indexes -----
 CREATE INDEX IF NOT EXISTS idx_appointments_at ON appointments(appointment_at);
-CREATE INDEX IF NOT EXISTS idx_attempts_appt ON notification_attempts(appointment_id, rule_name, channel, appointment_at);
+CREATE INDEX IF NOT EXISTS idx_attempts_appt ON notification_attempts(appointment_id, rule_name, channel);
 CREATE INDEX IF NOT EXISTS idx_attempts_sid ON notification_attempts(provider_sid);
 CREATE INDEX IF NOT EXISTS idx_opt_outs_phone ON opt_outs(phone, channel);
 CREATE INDEX IF NOT EXISTS idx_inbound_unprocessed ON inbound_messages(processed, received_at) WHERE processed = FALSE;

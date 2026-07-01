@@ -70,8 +70,8 @@ async def handle_sendgrid_status(request: Request):
             raw_sg_message_id = sg_message_id.split('.')[0] if '.' in sg_message_id else sg_message_id
 
             row = conn.execute(
-                "SELECT appointment_id, rule_name FROM email_queue WHERE sg_message_id LIKE ?",
-                [f"{raw_sg_message_id}%"]
+                "SELECT appointment_id, rule_name, to_address FROM email_queue WHERE sg_message_id = ?",
+                [raw_sg_message_id]
             ).fetchone()
 
             if not row:
@@ -83,8 +83,8 @@ async def handle_sendgrid_status(request: Request):
 
             if event_type == "delivered":
                 conn.execute(
-                    "UPDATE email_queue SET sent_at = CURRENT_TIMESTAMP WHERE sg_message_id LIKE ?",
-                    [f"{raw_sg_message_id}%"]
+                    "UPDATE email_queue SET sent_at = CURRENT_TIMESTAMP WHERE sg_message_id = ?",
+                    [raw_sg_message_id]
                 )
                 conn.execute(
                     """UPDATE notification_attempts
@@ -94,10 +94,10 @@ async def handle_sendgrid_status(request: Request):
                 )
                 logger.info("SendGrid delivered: email %s for appt %s", sg_message_id, appointment_id)
 
-            elif event_type in ("bounce", "dropped", "spam_report"):
+            elif event_type in ("bounce", "dropped", "spam_report", "unsubscribe"):
                 conn.execute(
-                    "UPDATE email_queue SET error = ? WHERE sg_message_id LIKE ?",
-                    [event_type, f"{raw_sg_message_id}%"]
+                    "UPDATE email_queue SET error = ? WHERE sg_message_id = ?",
+                    [event_type, raw_sg_message_id]
                 )
                 conn.execute(
                     """UPDATE notification_attempts
@@ -105,6 +105,23 @@ async def handle_sendgrid_status(request: Request):
                        WHERE appointment_id = ? AND rule_name = ? AND channel = 'email'""",
                     [event_type, appointment_id, rule_name]
                 )
+                # S5b: Write an email opt-out so the customer is not emailed again.
+                # We use the 'to_address' from the email_queue row (the customer's email).
+                # The opt_outs table uses the 'phone' column as a generic contact-key;
+                # email addresses are stored there for email-channel opt-outs and checked
+                # by notification_engine.py when building the opt-out lookup.
+                if event_type in ("spam_report", "unsubscribe"):
+                    email_address = row["to_address"] if row else event_data.get("email", "")
+                    if email_address:
+                        conn.execute(
+                            """INSERT OR REPLACE INTO opt_outs (phone, channel, source)
+                               VALUES (?, 'email', ?)""",
+                            [email_address, f"sendgrid_{event_type}"],
+                        )
+                        logger.info(
+                            "Email opt-out recorded for %s (SendGrid %s)",
+                            email_address, event_type,
+                        )
                 logger.error("SendGrid failed (%s): email %s for appt %s", event_type, sg_message_id, appointment_id)
 
         conn.commit()

@@ -139,8 +139,17 @@ function updatePreview() {
             `</div><hr style="border:none;border-top:2px solid #2e7d32;margin:0 0 16px;">`
         );
         previewEl.style.cssText = 'padding:0;white-space:normal;';
-        previewEl.innerHTML = '<iframe id="email-preview-frame" style="width:100%;height:420px;border:none;border-radius:4px;" sandbox="allow-same-origin"></iframe>';
-        document.getElementById('email-preview-frame').srcdoc = html;
+        // Build the iframe via the DOM so srcdoc is set as a property (not
+        // string-concatenated into innerHTML). sandbox="" fully isolates the
+        // preview: no script execution and no same-origin access to the parent
+        // session — mirrors the already-fixed updateNewPreview() (S6 fix).
+        previewEl.textContent = '';
+        const previewFrame = document.createElement('iframe');
+        previewFrame.id = 'email-preview-frame';
+        previewFrame.style.cssText = 'width:100%;height:420px;border:none;border-radius:4px;';
+        previewFrame.setAttribute('sandbox', '');
+        previewFrame.srcdoc = html;
+        previewEl.appendChild(previewFrame);
         if (counterEl) counterEl.innerHTML = '<i>Email — no length limit.</i>';
         return;
     }

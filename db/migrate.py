@@ -63,6 +63,73 @@ def _migrate_roles(conn):
     )
 
 
+def _migrate_dedup_key(conn) -> None:
+    """Fix the notification_attempts dedup UNIQUE key (L1 fix).
+
+    The old constraint was UNIQUE(appointment_id, rule_name, channel, appointment_at).
+    Including appointment_at meant that rescheduling an appointment created a new key,
+    causing all three reminder rules to fire again for the rescheduled appointment.
+
+    The new constraint is UNIQUE(appointment_id, rule_name, channel) — dedup is per
+    appointment × rule × channel, regardless of the appointment time.  The appointment_at
+    column is kept as an audit snapshot but no longer participates in the unique key.
+
+    This migration is idempotent: it checks for the old constraint before running.
+    """
+    # Check if the old index (with appointment_at) still exists
+    old_idx = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE type='index' AND name='notification_attempts_appointment_id_rule_name_channel_appoin'"
+    ).fetchone()
+
+    # Also check by inspecting the unique index columns
+    indexes = conn.execute(
+        "SELECT name, sql FROM sqlite_master WHERE type='index' AND tbl_name='notification_attempts'"
+    ).fetchall()
+
+    has_old_constraint = any(
+        idx["sql"] and "appointment_at" in idx["sql"] and "UNIQUE" in (idx["sql"] or "")
+        for idx in indexes
+    )
+
+    if not has_old_constraint:
+        return  # Already migrated or fresh install from updated schema.sql
+
+    print("  Migrating notification_attempts dedup key (removing appointment_at from UNIQUE constraint)...")
+    conn.executescript("""
+        CREATE TABLE IF NOT EXISTS notification_attempts_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            appointment_id TEXT NOT NULL REFERENCES appointments(id),
+            appointment_at TIMESTAMP NOT NULL,
+            rule_name TEXT NOT NULL,
+            channel TEXT NOT NULL,
+            to_address TEXT NOT NULL,
+            provider_sid TEXT,
+            status TEXT DEFAULT 'pending',
+            sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            status_updated_at TIMESTAMP,
+            error_code TEXT,
+            error_message TEXT,
+            UNIQUE (appointment_id, rule_name, channel)
+        );
+
+        INSERT OR IGNORE INTO notification_attempts_new
+            (id, appointment_id, appointment_at, rule_name, channel, to_address,
+             provider_sid, status, sent_at, status_updated_at, error_code, error_message)
+        SELECT id, appointment_id, appointment_at, rule_name, channel, to_address,
+               provider_sid, status, sent_at, status_updated_at, error_code, error_message
+        FROM notification_attempts;
+
+        DROP TABLE notification_attempts;
+        ALTER TABLE notification_attempts_new RENAME TO notification_attempts;
+
+        CREATE INDEX IF NOT EXISTS idx_attempts_appt
+            ON notification_attempts(appointment_id, rule_name, channel);
+        CREATE INDEX IF NOT EXISTS idx_attempts_sid
+            ON notification_attempts(provider_sid);
+    """)
+    print("  Dedup key migration complete.")
+
+
 def run_migration():
     schema_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "schema.sql")
 
@@ -91,6 +158,7 @@ def run_migration():
 
         # Migrate role column: add super_admin support, rename 'staff' -> 'user'
         _migrate_roles(conn)
+        _migrate_dedup_key(conn)
 
         conn.commit()
 

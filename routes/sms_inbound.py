@@ -1,7 +1,9 @@
 """routes/sms_inbound.py — Inbound SMS webhook (Twilio).
 
 Rule 3: Every inbound Twilio webhook validates X-Twilio-Signature.
-Rule 5: STOP/CANCEL/END/STOPALL/UNSUBSCRIBE → opt-out; START/UNSTOP/YES/SUBSCRIBE → opt-in.
+Rule 5: STOP/CANCEL/END/STOPALL/UNSUBSCRIBE → opt-out; START/UNSTOP/SUBSCRIBE → opt-in.
+         Keyword classification uses utils.sms_keywords (shared with reply_processor) with
+         whole-word matching to prevent false positives ("change" ⊄ "exchange", etc.).
 """
 
 import logging
@@ -13,6 +15,7 @@ from twilio.request_validator import RequestValidator
 import config
 from db.init import get_connection
 from utils.log_helpers import mask_phone
+from utils.sms_keywords import STOP_WORDS, START_WORDS, classify as _classify
 
 logger = logging.getLogger(__name__)
 
@@ -36,14 +39,8 @@ def validate_twilio(request: Request, form_data: dict) -> None:
         raise HTTPException(status_code=403, detail="Invalid Twilio signature")
 
 
-_STOP_WORDS    = frozenset({"STOP", "STOPALL", "UNSUBSCRIBE", "CANCEL", "END"})
-# NOTE: "YES" is a confirmation word (see _CONFIRM_WORDS), NOT an opt-in. Keeping it
-# here previously caused a customer who replied YES to confirm an appointment to be
-# silently re-subscribed after a prior STOP. Opt-in requires an explicit START word.
-_START_WORDS   = frozenset({"START", "UNSTOP", "SUBSCRIBE"})
-_CONFIRM_WORDS = frozenset({"YES", "Y", "YEP", "YEAH", "YEA", "CONFIRM", "CONFIRMED", "1", "OK", "OKAY", "SURE"})
-_RESCHEDULE_KW = ["reschedule", "rescheduling", "change", "different time", "move", "postpone", "cancel and rebook", "different day"]
-_QUESTION_KW   = ["?", "when", "where", "what", "how", "who", "can i", "will you", "is there", "do you", "are you"]
+# Keyword constants and classify() are shared with workers/reply_processor.py via
+# utils/sms_keywords.py. Do NOT redefine them here — use the imported names.
 
 _STATUS_EMOJI = {
     "stop":               "🚫",
@@ -53,16 +50,6 @@ _STATUS_EMOJI = {
     "question":           "❓",
     "unknown":            "💬",
 }
-
-def _classify(body: str) -> str:
-    upper = body.strip().upper()
-    clean = body.strip().lower()
-    if upper in _STOP_WORDS:    return "stop"
-    if upper in _START_WORDS:   return "start"
-    if upper in _CONFIRM_WORDS: return "confirm"
-    if any(k in clean for k in _RESCHEDULE_KW): return "reschedule_request"
-    if any(k in clean for k in _QUESTION_KW):   return "question"
-    return "unknown"
 
 
 @router.post("/webhooks/twilio/sms")
@@ -89,7 +76,7 @@ async def sms_inbound(request: Request):
         conn.commit()
         logger.info("Inbound SMS logged: %s from %s", sid, mask_phone(from_phone))
 
-        if body_upper in _STOP_WORDS:
+        if body_upper in STOP_WORDS:
             conn.execute(
                 "INSERT OR REPLACE INTO opt_outs (phone, channel, source) VALUES (?, ?, ?)",
                 [from_phone, "sms", "inbound_stop"],
@@ -97,7 +84,7 @@ async def sms_inbound(request: Request):
             conn.commit()
             logger.info("Opt-out recorded: %s (STOP)", mask_phone(from_phone))
 
-        elif body_upper in _START_WORDS:
+        elif body_upper in START_WORDS:
             conn.execute(
                 "DELETE FROM opt_outs WHERE phone=? AND channel='sms'",
                 [from_phone],

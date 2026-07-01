@@ -132,7 +132,13 @@ _default_source_names = ["hvac", "solar", "inspections"]
 _json_override = os.getenv("CALENDAR_SOURCE_MAP_JSON", "")
 
 if _json_override:
-    CALENDAR_SOURCE_MAP: dict[str, str] = json.loads(_json_override)
+    try:
+        CALENDAR_SOURCE_MAP: dict[str, str] = json.loads(_json_override)
+    except json.JSONDecodeError as e:
+        raise RuntimeError(
+            f"CALENDAR_SOURCE_MAP_JSON in .env is not valid JSON: {e}. "
+            "Please check the format (must be a JSON object mapping calendar IDs to source names)."
+        ) from e
 else:
     CALENDAR_SOURCE_MAP: dict[str, str] = EXPLICIT_SOURCE_MAP.copy()
     for idx, cal_id in enumerate(GOOGLE_CALENDAR_IDS):

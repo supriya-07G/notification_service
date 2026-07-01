@@ -11,6 +11,7 @@ from twilio.base.exceptions import TwilioRestException
 from twilio.rest import Client
 
 import config
+from utils.log_helpers import mask_phone
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +23,7 @@ def can_send(phone: str, conn) -> bool:
         [phone],
     ).fetchone()
     if row:
-        logger.info("SMS skipped — opted out: %s", phone)
+        logger.info("SMS skipped — opted out: %s", mask_phone(phone))
         return False
     return True
 
@@ -47,7 +48,7 @@ def send(to: str, body: str, attempt_id: int, conn) -> str | None:
             [msg.sid, attempt_id],
         )
         conn.commit()
-        logger.info("SMS queued: %s → %s", msg.sid, to)
+        logger.info("SMS queued: %s → %s", msg.sid, mask_phone(to))
         return msg.sid
     except TwilioRestException as e:
         conn.execute(
@@ -57,10 +58,10 @@ def send(to: str, body: str, attempt_id: int, conn) -> str | None:
             [str(e.code), e.msg, attempt_id],
         )
         conn.commit()
-        logger.error("SMS failed to %s: %s %s", to, e.code, e.msg)
+        logger.error("SMS failed to %s: %s %s", mask_phone(to), e.code, e.msg)
         return None
     except Exception as e:
-        logger.error("SMS network error to %s: %s", to, e)
+        logger.error("SMS network error to %s: %s", mask_phone(to), e)
         conn.execute(
             """UPDATE notification_attempts
                SET status='failed', error_code='NETWORK_ERROR', error_message=?

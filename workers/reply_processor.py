@@ -17,24 +17,10 @@ from sendgrid.helpers.mail import Mail
 
 logger = logging.getLogger(__name__)
 
-STOP_WORDS  = {'STOP','STOPALL','UNSUBSCRIBE','CANCEL','END'}
-START_WORDS = {'START','UNSTOP','SUBSCRIBE'}
-CONFIRM_WORDS = {'YES','Y','YEP','YEAH','YEA','CONFIRM','CONFIRMED','1','OK','OKAY','SURE'}
-RESCHEDULE_KEYWORDS = ['reschedule','rescheduling','change','different time',
-                       'move','postpone','cancel and rebook','different day']
-QUESTION_INDICATORS = ['?', 'when', 'where', 'what', 'how', 'who', 'can i',
-                       'will you', 'is there', 'do you', 'are you']
+from utils.sms_keywords import STOP_WORDS, START_WORDS, CONFIRM_WORDS, classify
 
-def classify(body: str) -> str:
-    upper = body.strip().upper()
-    clean = body.strip().lower()
-
-    if upper in STOP_WORDS:    return 'stop'
-    if upper in START_WORDS:   return 'start'
-    if upper in CONFIRM_WORDS: return 'confirm'
-    if any(k in clean for k in RESCHEDULE_KEYWORDS): return 'reschedule_request'
-    if any(i in clean for i in QUESTION_INDICATORS): return 'question'
-    return 'unknown'
+# classify() is imported from utils.sms_keywords (uses whole-word regex matching).
+# Do not redefine it here.
 
 def send_discord_alert(message_row: dict, classification: str, appointment: dict = None):
     """POST to DISCORD_WEBHOOK_URL with embed showing customer reply details."""
@@ -148,9 +134,17 @@ def run():
         escalated_to = 'discord,sms,email' if escalated else None
 
         if escalated:
-            # Look up appointment by phone
+            # Find the nearest upcoming appointment for this phone number.
+            # Using ASC + appointment_at >= now gives the soonest future booking,
+            # which is the one the customer is replying about. The old query used
+            # no date filter and ORDER BY ASC LIMIT 1, which fetched the oldest
+            # historical appointment instead (L7 fix).
             appt = conn.execute(
-                "SELECT * FROM appointments WHERE customer_phone=? ORDER BY appointment_at LIMIT 1",
+                """SELECT * FROM appointments
+                   WHERE customer_phone = ?
+                     AND appointment_at >= datetime('now')
+                   ORDER BY appointment_at ASC
+                   LIMIT 1""",
                 [msg['from_address']]
             ).fetchone()
             

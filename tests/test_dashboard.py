@@ -9,6 +9,7 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 from db.settings import Settings
 from db.admin_users import hash_password
+from auth.csrf import generate_csrf_token
 from auth.session import _serializer, COOKIE_NAME
 
 
@@ -26,8 +27,8 @@ def _create_test_admin(conn, email="admin@ecosave-group.com", password="TestPass
         [hashed]
     )
     conn.execute(
-        "INSERT OR IGNORE INTO admin_users (email, password_hash) VALUES (?, 'SHARED')",
-        [email],
+        "INSERT OR IGNORE INTO admin_users (email, password_hash, role, is_active) VALUES (?, 'SHARED', ?, ?)",
+        [email, "admin", 1],
     )
     conn.commit()
     token = _serializer.dumps({"email": email})
@@ -37,7 +38,9 @@ def _create_test_admin(conn, email="admin@ecosave-group.com", password="TestPass
 @pytest.fixture
 def client(non_closing_db):
     """FastAPI TestClient with session auth cookie pre-set."""
-    with patch("routes.dashboard.get_connection", return_value=non_closing_db):
+    with patch("routes.dashboard.get_connection", return_value=non_closing_db), \
+         patch("auth.session.get_connection", return_value=non_closing_db), \
+         patch("db.admin_users.get_connection", return_value=non_closing_db):
         from webhook_server import app
         with TestClient(app) as tc:
             # Create admin user and set cookie
@@ -49,7 +52,9 @@ def client(non_closing_db):
 @pytest.fixture
 def unauthed_client(non_closing_db):
     """FastAPI TestClient WITHOUT session cookie (for testing redirects)."""
-    with patch("routes.dashboard.get_connection", return_value=non_closing_db):
+    with patch("routes.dashboard.get_connection", return_value=non_closing_db), \
+         patch("auth.session.get_connection", return_value=non_closing_db), \
+         patch("db.admin_users.get_connection", return_value=non_closing_db):
         from webhook_server import app
         with TestClient(app) as tc:
             yield tc
@@ -124,7 +129,8 @@ class TestDashboardPOSTActions:
                 "quiet_hours_end": "18:00",
                 "quiet_hours_enabled": "true",
                 "reminder_72h_enabled": "true",
-                "timezone": "America/New_York"
+                "timezone": "America/New_York",
+                "csrf_token": generate_csrf_token(),
             },
             follow_redirects=True
         )
@@ -149,7 +155,7 @@ class TestDashboardPOSTActions:
 
         resp = client.post(
             "/dashboard/appointments/appt-lang-1/language",
-            data={"language": "es"},
+            data={"language": "es", "csrf_token": generate_csrf_token()},
             follow_redirects=True
         )
         assert resp.status_code == 200

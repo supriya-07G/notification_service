@@ -25,6 +25,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config
 from db.init import get_connection
 from db.templates import render_template
+from utils.log_helpers import mask_phone as _mask_email  # generic masker for PII strings
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +93,7 @@ def run() -> None:
             )
             conn.commit()
             sent += 1
-            logger.info("Email sent: %s → %s", sg_id, row["to_address"])
+            logger.info("Email sent: %s → %s", sg_id, _mask_email(row["to_address"]))
 
         except Exception as e:
             conn.execute(
@@ -101,7 +102,7 @@ def run() -> None:
             )
             conn.commit()
             failed += 1
-            logger.error("Email failed to %s: %s", row["to_address"], e)
+            logger.error("Email failed to %s: %s", _mask_email(row["to_address"]), e)
 
     print(f"Email worker: sent={sent} failed={failed}")
     conn.close()

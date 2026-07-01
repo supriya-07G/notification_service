@@ -64,10 +64,13 @@ def _get_client_ip(request: Request) -> str:
     if direct_ip not in trusted_proxies:
         return direct_ip
 
-    # If it is a trusted proxy, check X-Forwarded-For
+    # If it is a trusted proxy, check X-Forwarded-For.
+    # Use the RIGHTMOST entry — the leftmost is client-supplied and can be
+    # spoofed to bypass rate limiting.  The rightmost is what the last
+    # trusted proxy (e.g. nginx/Cloudflare) actually appended.
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded:
-        return forwarded.split(",")[0].strip()
+        return forwarded.split(",")[-1].strip()
         
     return direct_ip
 
