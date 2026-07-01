@@ -176,6 +176,17 @@ CREATE INDEX IF NOT EXISTS idx_email_queue_unsent ON email_queue(sent_at, attemp
 CREATE INDEX IF NOT EXISTS idx_quarantine_unresolved ON appointment_quarantine(resolved, detected_at) WHERE resolved = FALSE;
 CREATE INDEX IF NOT EXISTS idx_appointments_no_reminder ON appointments(no_reminder, appointment_at);
 
+-- ----- login_attempts (persistent rate limiting) -----
+-- Replaces the old in-memory per-process counter, which reset on restart and
+-- was multiplied by the number of uvicorn workers.
+CREATE TABLE IF NOT EXISTS login_attempts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ip TEXT NOT NULL,
+    attempted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_login_attempts_ip ON login_attempts(ip, attempted_at);
+
 -- ----- admin_users (Phase 4) -----
 CREATE TABLE IF NOT EXISTS admin_users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

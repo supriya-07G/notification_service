@@ -41,10 +41,10 @@ if SESSION_SECRET_KEY == "change_me_to_a_secure_random_string":
 
 _serializer = URLSafeTimedSerializer(SESSION_SECRET_KEY)
 
-# ── Rate limiting (in-memory, per-IP) ───────────────────────────────────────
-
-# Structure: { ip_address: [timestamp1, timestamp2, ...] }
-_failed_attempts: dict[str, list[float]] = {}
+# ── Rate limiting (persistent, per-IP) ──────────────────────────────────────
+# Backed by the login_attempts table so limits survive restarts and are shared
+# across all uvicorn workers (the old in-memory dict was per-process and reset
+# on every deploy).
 
 RATE_LIMIT_MAX_ATTEMPTS = 5
 RATE_LIMIT_WINDOW_SECONDS = 900  # 15 minutes
@@ -69,33 +69,47 @@ def _get_client_ip(request: Request) -> str:
 
 
 def is_rate_limited(request: Request) -> bool:
-    """Return True if the IP has exceeded the rate limit."""
+    """Return True if the IP has exceeded the rate limit within the window."""
     ip = _get_client_ip(request)
-    now = time.time()
-    attempts = _failed_attempts.get(ip, [])
-
-    # Filter to only attempts within the window
-    recent = [t for t in attempts if now - t < RATE_LIMIT_WINDOW_SECONDS]
-    _failed_attempts[ip] = recent
-
-    return len(recent) >= RATE_LIMIT_MAX_ATTEMPTS
+    from db.init import get_connection
+    conn = get_connection()
+    try:
+        row = conn.execute(
+            f"""SELECT COUNT(*) FROM login_attempts
+                WHERE ip = ? AND attempted_at >= datetime('now', '-{RATE_LIMIT_WINDOW_SECONDS} seconds')""",
+            (ip,),
+        ).fetchone()
+        return (row[0] if row else 0) >= RATE_LIMIT_MAX_ATTEMPTS
+    finally:
+        conn.close()
 
 
 def record_failed_attempt(request: Request) -> None:
-    """Record a failed login attempt for the client IP."""
+    """Record a failed login attempt for the client IP (persistent)."""
     ip = _get_client_ip(request)
-    now = time.time()
-
-    if ip not in _failed_attempts:
-        _failed_attempts[ip] = []
-
-    _failed_attempts[ip].append(now)
+    from db.init import get_connection
+    conn = get_connection()
+    try:
+        conn.execute("INSERT INTO login_attempts (ip) VALUES (?)", (ip,))
+        # Opportunistic cleanup of rows older than the window.
+        conn.execute(
+            f"DELETE FROM login_attempts WHERE attempted_at < datetime('now', '-{RATE_LIMIT_WINDOW_SECONDS} seconds')"
+        )
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def clear_failed_attempts(request: Request) -> None:
-    """Clear failed attempt counter for the client IP (on successful login)."""
+    """Clear failed attempts for the client IP (on successful login)."""
     ip = _get_client_ip(request)
-    _failed_attempts.pop(ip, None)
+    from db.init import get_connection
+    conn = get_connection()
+    try:
+        conn.execute("DELETE FROM login_attempts WHERE ip = ?", (ip,))
+        conn.commit()
+    finally:
+        conn.close()
 
 
 # ── Session cookie operations ───────────────────────────────────────────────
