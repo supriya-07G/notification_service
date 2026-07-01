@@ -15,7 +15,13 @@ import config
 import notification_engine
 from db.init import get_connection
 from db.settings import Settings
-from db.admin_users import authenticate, is_allowed_email, hash_password, validate_password_strength
+from db.admin_users import (
+    authenticate,
+    is_allowed_email,
+    hash_password,
+    validate_password_strength,
+    verify_password,
+)
 from auth.session import (
     get_current_user,
     create_session_cookie,
@@ -56,6 +62,17 @@ def _fmt_dt(value: str | None) -> str:
 
 templates.env.filters["fmt_dt"] = _fmt_dt
 router = APIRouter(prefix="/dashboard")
+
+
+def _should_redirect_to_change_password(path: str, user: dict | None) -> bool:
+    """Return True when a signed-in user should be nudged to change their password."""
+    if not user or user.get("force_password_reset") != 1:
+        return False
+    if path.startswith("/dashboard/api/") or path.startswith("/dashboard/login") or path.startswith("/dashboard/register"):
+        return False
+    if path in {"/dashboard/logout", "/dashboard/change-password", "/dashboard/change-password/"}:
+        return False
+    return True
 
 
 # ── Private helper logic ──────────────────────────────────────────────────
@@ -271,8 +288,37 @@ async def login_submit(
     clear_failed_attempts(request)
     logger.info("Login success: user=%s role=%s ip=%s", user["email"], user["role"], ip)
 
+    conn = get_connection()
+    try:
+        user_row = conn.execute(
+            "SELECT id, force_password_reset FROM admin_users WHERE email = ?",
+            [user["email"]],
+        ).fetchone()
+        force_reset = bool(user_row["force_password_reset"] if user_row else 0)
+        session_id = str(uuid.uuid4())
+        conn.execute(
+            """
+            INSERT INTO sessions (id, email, last_used_at)
+            VALUES (?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(id) DO UPDATE SET
+                email = excluded.email,
+                last_used_at = CURRENT_TIMESTAMP
+            """,
+            [session_id, user["email"]],
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
     response = RedirectResponse(url="/dashboard/", status_code=302)
-    create_session_cookie(response, user["email"], role=user["role"])
+    create_session_cookie(
+        response,
+        user["email"],
+        role=user["role"],
+        force_password_reset=force_reset,
+        session_id=session_id,
+        user_id=user_row["id"] if user_row else None,
+    )
     return response
 
 
@@ -290,6 +336,177 @@ async def logout(request: Request):
 
 
 # ── GET ROUTES ──────────────────────────────────────────────────────────────
+@router.get("/change-password", response_class=HTMLResponse)
+async def change_password_page(request: Request):
+    """Show the self-service change password page."""
+    redirect = require_login(request)
+    if redirect:
+        return redirect
+
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse(url="/dashboard/login", status_code=302)
+
+    required = request.query_params.get("required") == "true"
+    conn = get_connection()
+    try:
+        user_row = conn.execute(
+            "SELECT id, force_password_reset FROM admin_users WHERE email = ?",
+            [user["email"]],
+        ).fetchone()
+    finally:
+        conn.close()
+
+    return templates.TemplateResponse(
+        "change_password.html",
+        {
+            "request": request,
+            "active_page": "change_password",
+            "user": user,
+            "csrf_token": generate_csrf_token(session_id=user.get("session_id")),
+            "errors": [],
+            "required": required,
+            "force_password_reset": bool(user_row["force_password_reset"] if user_row else 0),
+        },
+    )
+
+
+@router.post("/change-password", response_class=HTMLResponse)
+async def change_password_submit(
+    request: Request,
+    current_password: str = Form(""),
+    new_password: str = Form(""),
+    confirm_password: str = Form(""),
+    csrf_token: str = Form(""),
+):
+    """Allow an authenticated user to change their own password."""
+    redirect = require_login(request)
+    if redirect:
+        return redirect
+
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse(url="/dashboard/login", status_code=302)
+
+    if not validate_csrf_token(csrf_token, session_id=user.get("session_id")):
+        return templates.TemplateResponse(
+            "change_password.html",
+            {
+                "request": request,
+                "active_page": "change_password",
+                "user": user,
+                "csrf_token": generate_csrf_token(session_id=user.get("session_id")),
+                "errors": ["Invalid request. Please try again."],
+                "required": False,
+                "force_password_reset": bool(user.get("force_password_reset")),
+            },
+            status_code=400,
+        )
+
+    conn = get_connection()
+    try:
+        user_row = conn.execute(
+            "SELECT id, email, password_hash, force_password_reset FROM admin_users WHERE email = ?",
+            [user["email"]],
+        ).fetchone()
+        if not user_row:
+            errors = ["Account not found."]
+            return templates.TemplateResponse(
+                "change_password.html",
+                {
+                    "request": request,
+                    "active_page": "change_password",
+                    "user": user,
+                    "csrf_token": generate_csrf_token(session_id=user.get("session_id")),
+                    "errors": errors,
+                    "required": False,
+                    "force_password_reset": bool(user.get("force_password_reset")),
+                },
+                status_code=400,
+            )
+
+        stored_hash = user_row["password_hash"]
+        if stored_hash and stored_hash != "SHARED":
+            current_matches = verify_password(current_password, stored_hash)
+        else:
+            global_hash = conn.execute(
+                "SELECT value FROM system_settings WHERE key = 'dashboard_password_hash'"
+            ).fetchone()
+            current_matches = bool(global_hash and verify_password(current_password, global_hash["value"]))
+
+        if not current_matches:
+            return templates.TemplateResponse(
+                "change_password.html",
+                {
+                    "request": request,
+                    "active_page": "change_password",
+                    "user": user,
+                    "csrf_token": generate_csrf_token(session_id=user.get("session_id")),
+                    "errors": ["Current password is incorrect."],
+                    "required": False,
+                    "force_password_reset": bool(user_row["force_password_reset"]),
+                },
+            )
+
+        if new_password != confirm_password:
+            return templates.TemplateResponse(
+                "change_password.html",
+                {
+                    "request": request,
+                    "active_page": "change_password",
+                    "user": user,
+                    "csrf_token": generate_csrf_token(session_id=user.get("session_id")),
+                    "errors": ["Passwords do not match."],
+                    "required": False,
+                    "force_password_reset": bool(user_row["force_password_reset"]),
+                },
+            )
+
+        errors = validate_password_strength(new_password)
+        if errors:
+            return templates.TemplateResponse(
+                "change_password.html",
+                {
+                    "request": request,
+                    "active_page": "change_password",
+                    "user": user,
+                    "csrf_token": generate_csrf_token(session_id=user.get("session_id")),
+                    "errors": ["Password must meet requirements."],
+                    "required": False,
+                    "force_password_reset": bool(user_row["force_password_reset"]),
+                },
+            )
+
+        hashed = hash_password(new_password)
+        conn.execute(
+            "UPDATE admin_users SET password_hash = ?, force_password_reset = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            [hashed, user_row["id"]],
+        )
+        conn.execute(
+            "INSERT INTO audit_log (action, source, entity_id, details) VALUES (?, ?, ?, ?)",
+            (
+                "update",
+                "dashboard",
+                str(user_row["id"]),
+                json.dumps({"table": "staff", "record_id": user_row["id"], "changed_by": user["email"]}),
+            ),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    response = RedirectResponse(url="/dashboard/?password_changed=1", status_code=303)
+    create_session_cookie(
+        response,
+        user["email"],
+        role=user["role"],
+        force_password_reset=False,
+        session_id=user.get("session_id"),
+        user_id=user.get("user_id"),
+    )
+    return response
+
+
 @router.get("/", response_class=HTMLResponse)
 async def overview(request: Request):
     redirect = require_login(request)

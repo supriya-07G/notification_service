@@ -236,6 +236,11 @@
               <li><span class="dropdown-item-text text-muted small px-3 py-1">{{ user.email if user is mapping else user }}</span></li>
               <li><hr class="dropdown-divider"></li>
               <li>
+                <a class="dropdown-item" href="/dashboard/change-password">
+                  <i class="bi bi-shield-lock me-1"></i> Change Password
+                </a>
+              </li>
+              <li>
                 <a class="dropdown-item text-danger" href="/dashboard/logout">
                   <i class="bi bi-box-arrow-right me-1"></i> Sign Out
                 </a>
@@ -250,6 +255,18 @@
 
   <!-- Main Content -->
   <main class="container main-container">
+    {% if request and request.query_params.get('password_changed') == '1' %}
+      <div class="alert alert-success d-flex align-items-center mb-4 border-success" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i>
+        <div>Your password was changed successfully.</div>
+      </div>
+    {% endif %}
+    {% if request and request.query_params.get('required') == 'true' %}
+      <div class="alert alert-warning d-flex align-items-center mb-4 border-warning" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        <div>Please change your password before continuing.</div>
+      </div>
+    {% endif %}
     {% block content %}{% endblock %}
   </main>
 

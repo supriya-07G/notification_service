@@ -74,6 +74,14 @@ def run_migration():
         conn.executescript(schema_sql)
 
         # Additive column migrations (ALTER TABLE for existing DBs)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS sessions (
+                id TEXT PRIMARY KEY,
+                email TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
         _add_column_if_missing(conn, "inbound_messages", "resolved",    "BOOLEAN DEFAULT FALSE")
         _add_column_if_missing(conn, "inbound_messages", "resolved_at", "TIMESTAMP")
         _add_column_if_missing(conn, "inbound_messages", "resolved_by", "TEXT")

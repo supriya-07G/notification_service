@@ -40,6 +40,18 @@ async def security_headers(request, call_next):
     return response
 
 
+@app.middleware("http")
+async def enforce_password_reset(request, call_next):
+    """Softly redirect users to the change-password page until it is completed."""
+    from routes.dashboard import _should_redirect_to_change_password, get_current_user
+
+    path = request.url.path
+    user = get_current_user(request)
+    if _should_redirect_to_change_password(path, user):
+        return RedirectResponse(url="/dashboard/change-password?required=true", status_code=302)
+    return await call_next(request)
+
+
 @app.on_event("startup")
 def on_startup():
     run_migration()

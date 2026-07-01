@@ -11,9 +11,13 @@ import os
 import time
 from typing import Optional
 
+from db.init import get_connection
+
 from fastapi import Request
 from fastapi.responses import RedirectResponse, Response
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
+
+from db.init import get_connection
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +28,7 @@ SESSION_SECURE_COOKIE = os.getenv("SESSION_SECURE_COOKIE", "true").lower() == "t
 SESSION_MAX_AGE = int(os.getenv("SESSION_MAX_AGE_SECONDS", "28800"))  # 8 hours
 
 COOKIE_NAME = "ns_session"
+_failed_attempts: dict[str, list[float]] = {}
 
 # Validate secret key at import time
 if len(SESSION_SECRET_KEY) < 32:
@@ -68,12 +73,51 @@ def _get_client_ip(request: Request) -> str:
     return direct_ip
 
 
+def _ensure_session_tables(conn) -> None:
+    """Create auth-related tables on demand for fresh or test databases."""
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS login_attempts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ip TEXT NOT NULL,
+            attempted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS sessions (
+            id TEXT PRIMARY KEY,
+            email TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            last_used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+    conn.commit()
+
+
+def _prune_rate_limit_entries(now: float) -> None:
+    """Drop expired entries from the in-memory rate-limit bucket."""
+    expired_keys = [
+        ip for ip, attempts in _failed_attempts.items()
+        if not any(now - ts <= RATE_LIMIT_WINDOW_SECONDS for ts in attempts)
+    ]
+    for ip in expired_keys:
+        _failed_attempts.pop(ip, None)
+
+
 def is_rate_limited(request: Request) -> bool:
     """Return True if the IP has exceeded the rate limit within the window."""
     ip = _get_client_ip(request)
-    from db.init import get_connection
+    now = time.time()
+    _prune_rate_limit_entries(now)
+    if ip in _failed_attempts and len(_failed_attempts[ip]) >= RATE_LIMIT_MAX_ATTEMPTS:
+        return True
+
     conn = get_connection()
     try:
+        _ensure_session_tables(conn)
         row = conn.execute(
             f"""SELECT COUNT(*) FROM login_attempts
                 WHERE ip = ? AND attempted_at >= datetime('now', '-{RATE_LIMIT_WINDOW_SECONDS} seconds')""",
@@ -87,9 +131,13 @@ def is_rate_limited(request: Request) -> bool:
 def record_failed_attempt(request: Request) -> None:
     """Record a failed login attempt for the client IP (persistent)."""
     ip = _get_client_ip(request)
-    from db.init import get_connection
+    now = time.time()
+    _prune_rate_limit_entries(now)
+    _failed_attempts.setdefault(ip, []).append(now)
+
     conn = get_connection()
     try:
+        _ensure_session_tables(conn)
         conn.execute("INSERT INTO login_attempts (ip) VALUES (?)", (ip,))
         # Opportunistic cleanup of rows older than the window.
         conn.execute(
@@ -103,9 +151,11 @@ def record_failed_attempt(request: Request) -> None:
 def clear_failed_attempts(request: Request) -> None:
     """Clear failed attempts for the client IP (on successful login)."""
     ip = _get_client_ip(request)
-    from db.init import get_connection
+    _failed_attempts.pop(ip, None)
+
     conn = get_connection()
     try:
+        _ensure_session_tables(conn)
         conn.execute("DELETE FROM login_attempts WHERE ip = ?", (ip,))
         conn.commit()
     finally:
@@ -117,7 +167,8 @@ def clear_failed_attempts(request: Request) -> None:
 def get_current_user(request: Request) -> Optional[dict]:
     """Extract and validate the session cookie.
 
-    Returns a dict {'email': str, 'role': str} if the session is valid, or None.
+    Returns a dict with email, role, force_password_reset, session_id, and user_id
+    when the session is valid, or None otherwise.
     """
     token = request.cookies.get(COOKIE_NAME)
     if not token:
@@ -128,14 +179,40 @@ def get_current_user(request: Request) -> Optional[dict]:
         email = data.get("email")
         if not email:
             return None
-        return {"email": email, "role": data.get("role", "user")}
+
+        force_reset = data.get("force_password_reset")
+        if force_reset in (1, True, "1", "true"):
+            force_reset_value = 1
+        else:
+            force_reset_value = 0
+
+        return {
+            "email": email,
+            "role": data.get("role", "user"),
+            "force_password_reset": force_reset_value,
+            "session_id": data.get("session_id"),
+            "user_id": data.get("user_id"),
+        }
     except (BadSignature, SignatureExpired):
         return None
 
 
-def create_session_cookie(response: Response, user_email: str, role: str = "user") -> None:
-    """Sign the user email and role into a session token and set it as a cookie."""
-    token = _serializer.dumps({"email": user_email, "role": role})
+def create_session_cookie(
+    response: Response,
+    user_email: str,
+    role: str = "user",
+    force_password_reset: bool = False,
+    session_id: Optional[str] = None,
+    user_id: Optional[int] = None,
+) -> None:
+    """Sign the user identity and session metadata into a session token and set it as a cookie."""
+    token = _serializer.dumps({
+        "email": user_email,
+        "role": role,
+        "force_password_reset": bool(force_password_reset),
+        "session_id": session_id,
+        "user_id": user_id,
+    })
     response.set_cookie(
         key=COOKIE_NAME,
         value=token,

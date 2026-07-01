@@ -365,6 +365,89 @@ class TestLogout:
         assert COOKIE_NAME in set_cookie
 
 
+class TestChangePasswordFlow:
+    def test_change_password_success_updates_hash(self, client, test_db):
+        _create_test_admin_in_db(test_db)
+        client.cookies.update(_get_session_cookie())
+        csrf = generate_csrf_token()
+
+        resp = client.post(
+            "/dashboard/change-password",
+            data={
+                "current_password": VALID_PASSWORD,
+                "new_password": "NewSecurePass123!",
+                "confirm_password": "NewSecurePass123!",
+                "csrf_token": csrf,
+            },
+            follow_redirects=False,
+        )
+
+        assert resp.status_code == 303
+        assert "/dashboard/?password_changed=1" in resp.headers["location"]
+
+        row = test_db.execute(
+            "SELECT password_hash, force_password_reset FROM admin_users WHERE email = ?",
+            [VALID_EMAIL],
+        ).fetchone()
+        assert row is not None
+        assert verify_password("NewSecurePass123!", row["password_hash"]) is True
+        assert row["force_password_reset"] == 0
+
+    def test_change_password_rejects_wrong_current_password(self, client, test_db):
+        _create_test_admin_in_db(test_db)
+        client.cookies.update(_get_session_cookie())
+        csrf = generate_csrf_token()
+
+        resp = client.post(
+            "/dashboard/change-password",
+            data={
+                "current_password": "WrongPassword123!",
+                "new_password": "NewSecurePass123!",
+                "confirm_password": "NewSecurePass123!",
+                "csrf_token": csrf,
+            },
+        )
+
+        assert resp.status_code == 200
+        assert "Current password is incorrect" in resp.text
+
+    def test_change_password_rejects_weak_new_password(self, client, test_db):
+        _create_test_admin_in_db(test_db)
+        client.cookies.update(_get_session_cookie())
+        csrf = generate_csrf_token()
+
+        resp = client.post(
+            "/dashboard/change-password",
+            data={
+                "current_password": VALID_PASSWORD,
+                "new_password": "short",
+                "confirm_password": "short",
+                "csrf_token": csrf,
+            },
+        )
+
+        assert resp.status_code == 200
+        assert "Password must meet requirements" in resp.text
+
+    def test_change_password_rejects_mismatch(self, client, test_db):
+        _create_test_admin_in_db(test_db)
+        client.cookies.update(_get_session_cookie())
+        csrf = generate_csrf_token()
+
+        resp = client.post(
+            "/dashboard/change-password",
+            data={
+                "current_password": VALID_PASSWORD,
+                "new_password": "NewSecurePass123!",
+                "confirm_password": "DifferentPass123!",
+                "csrf_token": csrf,
+            },
+        )
+
+        assert resp.status_code == 200
+        assert "Passwords do not match" in resp.text
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # Public Endpoints (no auth required)
 # ══════════════════════════════════════════════════════════════════════════════
