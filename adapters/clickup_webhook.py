@@ -412,15 +412,33 @@ def _extract_appointment_data(payload: dict) -> dict:
     service_labels   = _get_scope_of_work(custom_fields, FIELD_SCOPE_OF_WORK)
     appointment_type = ", ".join(service_labels) if service_labels else "service"
 
-    # ── Appointment Date: try date fields in priority order until one has a value
-    date_field_id  = None
-    raw_date       = None
+    # ── Appointment Date: collect ALL mapped date fields that have a value, then
+    # pick the SOONEST upcoming date (>= now); if none are upcoming, fall back to
+    # the MOST RECENT. Returning customers keep old scope options checked, whose
+    # stale past dates come earlier in the list — taking the first non-null there
+    # buried the real (future) appointment and made the engine skip the reminder.
+    now_utc = datetime.now(timezone.utc)
+    date_candidates: list[tuple[datetime, str, str]] = []  # (utc_dt, field_id, raw_ms)
     for fid in _resolve_date_fields(service_labels):
         raw_date = _get_date_field_raw(custom_fields, fid)
-        if raw_date:
-            date_field_id = fid
-            break
-    appointment_at = _epoch_ms_to_datetime_str(raw_date)
+        if not raw_date:
+            continue
+        try:
+            cand_dt = datetime.fromtimestamp(int(raw_date) / 1000, tz=timezone.utc)
+        except (ValueError, TypeError, OSError):
+            continue  # skip unparseable value, don't crash the task
+        date_candidates.append((cand_dt, fid, raw_date))
+
+    upcoming = [c for c in date_candidates if c[0] >= now_utc]
+    if upcoming:
+        chosen = min(upcoming, key=lambda c: c[0])
+    elif date_candidates:
+        chosen = max(date_candidates, key=lambda c: c[0])
+    else:
+        chosen = None
+
+    date_field_id = chosen[1] if chosen else None
+    appointment_at = _epoch_ms_to_datetime_str(chosen[2]) if chosen else None
 
     return {
         "task_id":          task_id,

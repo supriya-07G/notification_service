@@ -295,7 +295,12 @@ def process_task(task: dict, conn: sqlite3.Connection) -> str | None:
     customer_phone = _validate_phone(raw_phone)
     phone_valid = bool(customer_phone)
 
-    # 4. Determine Appointment Date — only try fields the scope labels map to
+    # 4. Determine Appointment Date — only try fields the scope labels map to.
+    # Collect ALL mapped date fields that have a value, then pick the SOONEST
+    # upcoming date (>= now); if none are upcoming, fall back to the MOST RECENT.
+    # Returning customers keep old scope options checked, whose stale past dates
+    # come earlier — taking the first non-null there buried the real (future)
+    # appointment and made the engine skip the reminder.
     appointment_at = None
     seen_fields: set[str] = set()
     ordered_fields: list[str] = []
@@ -305,19 +310,31 @@ def process_task(task: dict, conn: sqlite3.Connection) -> str | None:
             seen_fields.add(fid)
             ordered_fields.append(fid)
 
+    now_utc = datetime.now(timezone.utc)
+    date_candidates: list[tuple[datetime, str]] = []  # (utc_dt, field_id)
     for field_id in ordered_fields:
         for field in custom_fields:
             if field.get("id") == field_id:
                 val = field.get("value")
                 if val is not None:
                     try:
-                        utc_dt = datetime.fromtimestamp(int(val) / 1000, tz=timezone.utc)
-                        appointment_at = utc_dt.strftime("%Y-%m-%d %H:%M:%S")
-                    except (ValueError, TypeError):
+                        cand_dt = datetime.fromtimestamp(int(val) / 1000, tz=timezone.utc)
+                        date_candidates.append((cand_dt, field_id))
+                    except (ValueError, TypeError, OSError):
                         logger.warning(f"  Invalid date format for {task_id}")
                 break
-        if appointment_at:
-            break
+
+    upcoming = [c for c in date_candidates if c[0] >= now_utc]
+    if upcoming:
+        chosen = min(upcoming, key=lambda c: c[0])
+    elif date_candidates:
+        chosen = max(date_candidates, key=lambda c: c[0])
+    else:
+        chosen = None
+
+    date_field_used = chosen[1] if chosen else None
+    if chosen:
+        appointment_at = chosen[0].strftime("%Y-%m-%d %H:%M:%S")
                 
     if not appointment_at:
         # Still refresh contact fields for rows already in DB so stale email/phone/name
