@@ -79,9 +79,11 @@ def run_migration():
                 id TEXT PRIMARY KEY,
                 email TEXT NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                last_used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                last_used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                revoked_at TIMESTAMP
             )
         """)
+        _add_column_if_missing(conn, "sessions", "revoked_at", "TIMESTAMP")
         _add_column_if_missing(conn, "inbound_messages", "resolved",    "BOOLEAN DEFAULT FALSE")
         _add_column_if_missing(conn, "inbound_messages", "resolved_at", "TIMESTAMP")
         _add_column_if_missing(conn, "inbound_messages", "resolved_by", "TEXT")

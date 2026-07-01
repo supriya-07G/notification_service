@@ -8,6 +8,7 @@ Rule 2: Never log session tokens or secrets.
 
 import logging
 import os
+import sqlite3
 import time
 from typing import Optional
 
@@ -16,8 +17,6 @@ from db.init import get_connection
 from fastapi import Request
 from fastapi.responses import RedirectResponse, Response
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
-
-from db.init import get_connection
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +89,8 @@ def _ensure_session_tables(conn) -> None:
             id TEXT PRIMARY KEY,
             email TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            last_used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            last_used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            revoked_at TIMESTAMP
         )
         """
     )
@@ -164,8 +164,37 @@ def clear_failed_attempts(request: Request) -> None:
 
 # ── Session cookie operations ───────────────────────────────────────────────
 
+def _get_user_from_db(conn, email: str | None = None, user_id: int | None = None) -> Optional[dict]:
+    """Load the current user from the database and reject inactive accounts."""
+    if not email and user_id is None:
+        return None
+
+    if user_id is not None:
+        row = conn.execute(
+            "SELECT id, email, role, is_active, force_password_reset FROM admin_users WHERE id = ?",
+            [user_id],
+        ).fetchone()
+    else:
+        row = conn.execute(
+            "SELECT id, email, role, is_active, force_password_reset FROM admin_users WHERE email = ? COLLATE NOCASE",
+            [email.strip().lower()],
+        ).fetchone()
+
+    if not row:
+        return None
+    if row["is_active"] != 1:
+        return None
+
+    return {
+        "id": row["id"],
+        "email": row["email"],
+        "role": row["role"] or "user",
+        "force_password_reset": bool(row["force_password_reset"]),
+    }
+
+
 def get_current_user(request: Request) -> Optional[dict]:
-    """Extract and validate the session cookie.
+    """Extract and validate the session cookie against the database.
 
     Returns a dict with email, role, force_password_reset, session_id, and user_id
     when the session is valid, or None otherwise.
@@ -176,25 +205,48 @@ def get_current_user(request: Request) -> Optional[dict]:
 
     try:
         data = _serializer.loads(token, max_age=SESSION_MAX_AGE)
-        email = data.get("email")
-        if not email:
-            return None
-
-        force_reset = data.get("force_password_reset")
-        if force_reset in (1, True, "1", "true"):
-            force_reset_value = 1
-        else:
-            force_reset_value = 0
-
-        return {
-            "email": email,
-            "role": data.get("role", "user"),
-            "force_password_reset": force_reset_value,
-            "session_id": data.get("session_id"),
-            "user_id": data.get("user_id"),
-        }
     except (BadSignature, SignatureExpired):
         return None
+
+    email = (data.get("email") or "").strip().lower()
+    if not email:
+        return None
+
+    session_id = data.get("session_id")
+    user_id = data.get("user_id")
+
+    conn = get_connection()
+    try:
+        user_row = _get_user_from_db(conn, email=email, user_id=user_id)
+        if not user_row:
+            return None
+
+        if session_id:
+            session_row = conn.execute(
+                "SELECT id, revoked_at FROM sessions WHERE id = ?",
+                [session_id],
+            ).fetchone()
+            if not session_row or session_row["revoked_at"] is not None:
+                return None
+
+            conn.execute(
+                "UPDATE sessions SET last_used_at = CURRENT_TIMESTAMP WHERE id = ?",
+                [session_id],
+            )
+            conn.commit()
+
+        force_reset = 1 if user_row["force_password_reset"] else 0
+        return {
+            "email": user_row["email"],
+            "role": user_row["role"],
+            "force_password_reset": force_reset,
+            "session_id": session_id,
+            "user_id": user_row["id"],
+        }
+    except sqlite3.OperationalError:
+        return None
+    finally:
+        conn.close()
 
 
 def create_session_cookie(
@@ -233,6 +285,37 @@ def clear_session_cookie(response: Response) -> None:
         samesite="lax",
         secure=SESSION_SECURE_COOKIE,
     )
+
+
+def revoke_session(request: Request) -> None:
+    """Mark the current session (or all sessions for the user) as revoked."""
+    token = request.cookies.get(COOKIE_NAME)
+    if not token:
+        return
+
+    try:
+        data = _serializer.loads(token, max_age=SESSION_MAX_AGE)
+    except (BadSignature, SignatureExpired):
+        return
+
+    email = (data.get("email") or "").strip().lower()
+    session_id = data.get("session_id")
+
+    conn = get_connection()
+    try:
+        if session_id:
+            conn.execute(
+                "UPDATE sessions SET revoked_at = CURRENT_TIMESTAMP, last_used_at = CURRENT_TIMESTAMP WHERE id = ?",
+                [session_id],
+            )
+        elif email:
+            conn.execute(
+                "UPDATE sessions SET revoked_at = CURRENT_TIMESTAMP, last_used_at = CURRENT_TIMESTAMP WHERE email = ?",
+                [email],
+            )
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def require_role(request: Request, allowed_roles: list[str]) -> Optional[RedirectResponse]:

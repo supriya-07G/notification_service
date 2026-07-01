@@ -177,10 +177,14 @@ def run() -> dict:
 
                 elif channel == "email":
                     # ── RULE 5b: opt-out check for email ────────────────
-                    row = conn.execute(
-                        "SELECT 1 FROM opt_outs WHERE phone=? AND channel IN ('email','all')",
-                        [appt["customer_phone"]]
-                    ).fetchone()
+                    opt_out_values = [value for value in [to_address, appt["customer_email"], appt["customer_phone"]] if value]
+                    opt_out_placeholders = ",".join("?" for _ in opt_out_values)
+                    row = None
+                    if opt_out_values:
+                        row = conn.execute(
+                            f"SELECT 1 FROM opt_outs WHERE phone IN ({opt_out_placeholders}) AND channel IN ('email','all')",
+                            opt_out_values,
+                        ).fetchone()
                     if row:
                         conn.execute(
                             "UPDATE notification_attempts SET status='skipped_optout' WHERE id=?",

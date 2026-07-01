@@ -168,6 +168,32 @@ class TestEngineOptOut:
         assert row is not None
         assert row["status"] == "skipped_optout"
 
+    def test_opted_out_email_address_skipped(self, test_db, non_closing_db):
+        """Email address in opt_outs → email is skipped and no queue row is created."""
+        test_db.execute(
+            """INSERT INTO message_templates
+               (channel, appointment_type, language, rule_name, subject, body)
+               VALUES ('email', 'all', 'en', 'customer_24h', 'Test Subj', 'Test Body')"""
+        )
+        test_db.commit()
+
+        now = TZ.localize(datetime(2024, 6, 15, 10, 0))
+        _insert_appointment(test_db, "appt-email-optout", 24, now, customer_email="alice@example.com")
+
+        test_db.execute(
+            "INSERT INTO opt_outs (phone, channel, source) VALUES (?, ?, ?)",
+            ["alice@example.com", "email", "manual"],
+        )
+        test_db.commit()
+
+        stats, _ = _run_engine(non_closing_db, now)
+
+        assert stats["skipped_optout"] >= 1
+        row = test_db.execute(
+            "SELECT * FROM email_queue WHERE appointment_id='appt-email-optout'"
+        ).fetchone()
+        assert row is None
+
 
 class TestEngineNoReminder:
     def test_no_reminder_appointment_skipped(self, test_db, non_closing_db):

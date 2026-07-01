@@ -26,6 +26,7 @@ from auth.session import (
     get_current_user,
     create_session_cookie,
     clear_session_cookie,
+    revoke_session,
     require_login,
     require_role,
     is_rate_limited,
@@ -331,6 +332,7 @@ async def logout(request: Request):
         logger.info("Logout: user=%s ip=%s", user["email"], ip)
 
     response = RedirectResponse(url="/dashboard/login", status_code=302)
+    revoke_session(request)
     clear_session_cookie(response)
     return response
 
@@ -1960,28 +1962,8 @@ async def register_submit(
             {"request": request, "error": pw_errors[0], "csrf_token": new_csrf}
         )
 
-    conn = get_connection()
-    try:
-        existing = conn.execute("SELECT id FROM admin_users WHERE email = ?", [email_clean]).fetchone()
-        if existing:
-            new_csrf = generate_csrf_token()
-            return templates.TemplateResponse(
-                "register.html",
-                {"request": request, "error": "This email is already registered.", "csrf_token": new_csrf}
-            )
-
-        hashed = hash_password(password)
-        conn.execute(
-            """INSERT INTO admin_users (email, password_hash, name, phone, role, is_active)
-               VALUES (?, ?, ?, ?, 'user', 1)""",
-            [email_clean, hashed, name.strip(), phone.strip() or None]
-        )
-        conn.commit()
-        logger.info("New self-registration: %s", email_clean)
-    finally:
-        conn.close()
-
-    return RedirectResponse(url="/dashboard/login?registered=true", status_code=302)
+    logger.info("Registration rejected for %s", email_clean)
+    return RedirectResponse(url="/dashboard/login?registration_closed=true", status_code=302)
 
 
 # ── Template Editor API Endpoints ─────────────────────────────────────────
@@ -2079,15 +2061,34 @@ async def api_test_send_template(request: Request, id: int, data: dict = Body(..
     if not validate_csrf_token(csrf):
         return JSONResponse(status_code=403, content={"error": "Invalid CSRF token"})
         
+    if not user or user.get("role") not in ("super_admin", "admin"):
+        return JSONResponse(status_code=403, content={"error": "Access denied"})
+
     to = data.get("to", "").strip()
-    if not to:
-        return JSONResponse(status_code=400, content={"error": "No recipient provided"})
 
     conn = get_connection()
     try:
         tmpl = conn.execute("SELECT * FROM message_templates WHERE id = ?", [id]).fetchone()
         if not tmpl:
             return JSONResponse(status_code=404, content={"error": "Template not found"})
+
+        user_row = conn.execute(
+            "SELECT email, phone FROM admin_users WHERE email = ?",
+            [user["email"]],
+        ).fetchone()
+
+        if tmpl["channel"] == "sms":
+            allowed_to = (user_row["phone"] if user_row and user_row["phone"] else "").strip()
+            if not allowed_to:
+                return JSONResponse(status_code=400, content={"error": "No phone number is configured for this account"})
+            if to and to != allowed_to:
+                return JSONResponse(status_code=403, content={"error": "Only your own phone number is allowed"})
+            to = allowed_to
+        else:
+            allowed_to = user["email"].strip()
+            if to and to != allowed_to:
+                return JSONResponse(status_code=403, content={"error": "Only your own email address is allowed"})
+            to = allowed_to
 
         sample_data = {
             "customer_name": "Test Customer",

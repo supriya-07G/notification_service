@@ -15,7 +15,7 @@ from db.admin_users import (
     authenticate,
 )
 from auth.csrf import generate_csrf_token, validate_csrf_token
-from auth.session import _serializer, COOKIE_NAME, _failed_attempts
+from auth.session import _serializer, COOKIE_NAME, _failed_attempts, get_current_user
 
 
 # ── Helper ──────────────────────────────────────────────────────────────────
@@ -57,7 +57,8 @@ def _get_session_cookie(email=VALID_EMAIL):
 def client(non_closing_db):
     """TestClient with DB mocked. No session cookie set."""
     with patch("routes.dashboard.get_connection", return_value=non_closing_db), \
-         patch("db.admin_users.get_connection", return_value=non_closing_db):
+         patch("db.admin_users.get_connection", return_value=non_closing_db), \
+         patch("auth.session.get_connection", return_value=non_closing_db):
         from webhook_server import app
         with TestClient(app) as tc:
             yield tc
@@ -364,6 +365,57 @@ class TestLogout:
         set_cookie = resp.headers.get("set-cookie", "")
         assert COOKIE_NAME in set_cookie
 
+    def test_logout_revokes_session_in_db(self, client, test_db):
+        _create_test_admin_in_db(test_db)
+        session_id = "session-revocation"
+        test_db.execute(
+            "INSERT INTO sessions (id, email) VALUES (?, ?)",
+            [session_id, VALID_EMAIL],
+        )
+        test_db.commit()
+        client.cookies.update(_get_session_cookie())
+
+        resp = client.get("/dashboard/logout", follow_redirects=False)
+
+        assert resp.status_code == 302
+        row = test_db.execute("SELECT revoked_at FROM sessions WHERE id = ?", [session_id]).fetchone()
+        assert row is not None and row[0] is not None
+
+
+class TestSessionTrust:
+    def test_inactive_user_cookie_is_rejected(self, client, test_db):
+        test_db.execute(
+            "INSERT INTO admin_users (email, password_hash, role, is_active) VALUES (?, ?, ?, ?)",
+            [VALID_EMAIL, "unused", "admin", 0],
+        )
+        test_db.commit()
+        client.cookies.update(_get_session_cookie())
+
+        request = client.get("/dashboard/", follow_redirects=False)
+        assert request.status_code == 302
+        assert "/dashboard/login" in request.headers["location"]
+
+        with client as c:
+            assert get_current_user(type("Req", (), {"cookies": {}, "headers": {}})()) is None
+
+
+class TestRegistrationFlow:
+    def test_registration_is_closed(self, client):
+        resp = client.post(
+            "/dashboard/register",
+            data={
+                "name": "Test User",
+                "email": "test@ecosave-group.com",
+                "phone": "+15551234567",
+                "password": "SecurePass123!@",
+                "confirm_password": "SecurePass123!@",
+                "csrf_token": generate_csrf_token(),
+            },
+            follow_redirects=False,
+        )
+        assert resp.status_code == 302
+        assert "/dashboard/login" in resp.headers["location"]
+
 
 class TestChangePasswordFlow:
     def test_change_password_success_updates_hash(self, client, test_db):
@@ -461,3 +513,23 @@ class TestPublicEndpoints:
     def test_login_page_no_auth_required(self, client):
         resp = client.get("/dashboard/login")
         assert resp.status_code == 200
+
+    def test_test_send_requires_admin_role(self, client, test_db):
+        test_db.execute(
+            "INSERT INTO admin_users (email, password_hash, role, is_active) VALUES (?, ?, ?, ?)",
+            [VALID_EMAIL, "unused", "user", 1],
+        )
+        template_cursor = test_db.execute(
+            "INSERT INTO message_templates (channel, appointment_type, language, rule_name, subject, body, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            ["sms", "all", "en", "customer_test_send", "Test", "Test body", 1],
+        )
+        test_db.commit()
+        client.cookies.update(_get_session_cookie())
+
+        resp = client.post(
+            f"/dashboard/api/templates/{template_cursor.lastrowid}/test-send",
+            json={"to": "+15551234567"},
+            headers={"X-CSRF-Token": generate_csrf_token()},
+        )
+
+        assert resp.status_code == 403
