@@ -664,11 +664,14 @@ def process_webhook(payload: dict) -> dict:
         return {"status": "ok", "action": "created" if not existing else "updated"}
 
     except Exception as e:
+        # Log the full exception server-side only. Never return str(e) to the
+        # caller — it can leak SQL fragments, file paths, and customer PII from
+        # the payload to whoever can reach the webhook.
         logger.error("Error processing ClickUp webhook: %s", e, exc_info=True)
         try:
             conn.rollback()
         except Exception:
             pass
-        return {"status": "ok", "action": "error", "reason": str(e)}
+        return {"status": "error", "action": "error"}
     finally:
         conn.close()

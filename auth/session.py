@@ -31,6 +31,13 @@ if len(SESSION_SECRET_KEY) < 32:
         "SESSION_SECRET_KEY must be at least 32 characters. "
         "Generate one with: python -c \"import secrets; print(secrets.token_hex(32))\""
     )
+# Reject the .env.example placeholder — it is public and would make all session
+# and CSRF tokens forgeable.
+if SESSION_SECRET_KEY == "change_me_to_a_secure_random_string":
+    raise RuntimeError(
+        "SESSION_SECRET_KEY is still the .env.example placeholder. "
+        "Set a real secret: python -c \"import secrets; print(secrets.token_hex(32))\""
+    )
 
 _serializer = URLSafeTimedSerializer(SESSION_SECRET_KEY)
 

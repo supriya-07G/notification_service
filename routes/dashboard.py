@@ -1317,7 +1317,7 @@ async def add_template(
     if redirect:
         return redirect
     user = get_current_user(request)
-    if not user or user.get("role") not in ("super_admin", "admin", "user"):
+    if not user or user.get("role") not in ("super_admin", "admin"):
         raise HTTPException(status_code=403, detail="Access denied")
     if not validate_csrf_token(csrf_token):
         return RedirectResponse(url="/dashboard/templates?error=Invalid+CSRF+token", status_code=303)

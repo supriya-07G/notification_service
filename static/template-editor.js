@@ -309,7 +309,16 @@ function updateNewPreview() {
         let html = newQuill.root.innerHTML;
         for (const [k, v] of Object.entries(SAMPLE_DATA)) html = html.replace(new RegExp(`{{${k}}}`, 'g'), v);
         previewEl.style.cssText = 'padding:0;white-space:normal;min-height:48px;';
-        previewEl.innerHTML = `<iframe srcdoc="${html.replace(/"/g, '&quot;')}" style="width:100%;height:300px;border:none;border-radius:4px;" sandbox="allow-same-origin"></iframe>`;
+        // Build the iframe via the DOM and assign srcdoc as a property (not by
+        // string-concatenating into innerHTML, which only escaped `"` and allowed
+        // tag/attribute breakout). sandbox="" fully isolates the preview: no script
+        // execution and no same-origin access to the parent (which holds the session).
+        previewEl.textContent = '';
+        const previewFrame = document.createElement('iframe');
+        previewFrame.style.cssText = 'width:100%;height:300px;border:none;border-radius:4px;';
+        previewFrame.setAttribute('sandbox', '');
+        previewFrame.srcdoc = html;
+        previewEl.appendChild(previewFrame);
         if (statsContainer) statsContainer.classList.add('d-none');
         return;
     }

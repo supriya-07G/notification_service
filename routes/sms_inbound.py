@@ -37,7 +37,10 @@ def validate_twilio(request: Request, form_data: dict) -> None:
 
 
 _STOP_WORDS    = frozenset({"STOP", "STOPALL", "UNSUBSCRIBE", "CANCEL", "END"})
-_START_WORDS   = frozenset({"START", "UNSTOP", "YES", "SUBSCRIBE"})
+# NOTE: "YES" is a confirmation word (see _CONFIRM_WORDS), NOT an opt-in. Keeping it
+# here previously caused a customer who replied YES to confirm an appointment to be
+# silently re-subscribed after a prior STOP. Opt-in requires an explicit START word.
+_START_WORDS   = frozenset({"START", "UNSTOP", "SUBSCRIBE"})
 _CONFIRM_WORDS = frozenset({"YES", "Y", "YEP", "YEAH", "YEA", "CONFIRM", "CONFIRMED", "1", "OK", "OKAY", "SURE"})
 _RESCHEDULE_KW = ["reschedule", "rescheduling", "change", "different time", "move", "postpone", "cancel and rebook", "different day"]
 _QUESTION_KW   = ["?", "when", "where", "what", "how", "who", "can i", "will you", "is there", "do you", "are you"]

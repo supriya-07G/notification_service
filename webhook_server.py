@@ -20,6 +20,26 @@ from routes.sso import router as sso_router
 
 app = FastAPI(title="Notification Service", docs_url=None, redoc_url=None)
 
+
+@app.middleware("http")
+async def security_headers(request, call_next):
+    """Add baseline security headers to every response.
+
+    CSP is limited to frame-ancestors (clickjacking) rather than a full resource
+    policy, to avoid breaking the dashboard's CDN assets. HSTS is safe behind the
+    Cloudflare/TLS ingress.
+    """
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers.setdefault(
+        "Strict-Transport-Security", "max-age=31536000; includeSubDomains"
+    )
+    response.headers.setdefault("Content-Security-Policy", "frame-ancestors 'none'")
+    return response
+
+
 @app.on_event("startup")
 def on_startup():
     run_migration()
